@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#__next {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-bg text-text antialiased;
+  background-image: radial-gradient(circle at 20% -10%, rgba(0, 255, 255, 0.08), transparent 35%), radial-gradient(circle at 80% 0%, rgba(127, 90, 240, 0.12), transparent 35%);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2d3748 #0d1117;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2d3748;
+  border-radius: 999px;
+}
+
+.card {
+  @apply bg-panel shadow-card rounded-xl border border-white/5;
+}
+
+.btn-primary {
+  @apply rounded-lg px-4 py-2 font-semibold transition-all duration-200 active:scale-95;
+  background: linear-gradient(135deg, #00ffff 0%, #4fd1c5 100%);
+  color: #0d1117;
+}
+
+.btn-secondary {
+  @apply rounded-lg px-4 py-2 font-semibold transition-all duration-200 active:scale-95;
+  background: linear-gradient(135deg, #7f5af0 0%, #4fd1c5 100%);
+  color: #ffffff;
+}
