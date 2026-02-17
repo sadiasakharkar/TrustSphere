@@ -52,7 +52,10 @@ export default function IncidentsPage() {
     setActiveModal('playbook');
     setPlaybookState('loading');
     try {
-      await getPlaybook(row.id);
+      await Promise.race([
+        getPlaybook(row.id),
+        new Promise((resolve) => setTimeout(resolve, 1200))
+      ]);
       setPlaybookState('ready');
     } catch {
       setPlaybookState('error');
@@ -153,10 +156,10 @@ export default function IncidentsPage() {
             {playbookState === 'error' && 'Playbook generation failed (placeholder). Please retry.'}
           </div>
           <div className="mt-4 flex gap-2">
-            <button className="btn-primary" onClick={closeModal} disabled={playbookState === 'loading'}>
+            <button className="btn-primary" onClick={closeModal}>
               Confirm
             </button>
-            <button className="btn-secondary" onClick={closeModal} disabled={playbookState === 'loading'}>
+            <button className="btn-secondary" onClick={closeModal}>
               Review
             </button>
           </div>
