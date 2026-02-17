@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Modal from '../components/Modal';
 import { useAuth } from '../context/AuthContext';
+import { useEffect } from 'react';
 
 const modules = [
   'Ingestion: SIEM/EDR/IAM',
@@ -117,3 +118,8 @@ export default function LoginPage() {
     </div>
   );
 }
+  useEffect(() => {
+    if (router.query.role === 'Admin') {
+      setRole('Admin');
+    }
+  }, [router.query.role]);
