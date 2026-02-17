@@ -1,19 +1,24 @@
-# TrustSphere Frontend Prototype
+# TrustSphere Frontend
 
-## Run Locally
+Next.js + React + Tailwind frontend for the TrustSphere offline ACIRS demo.
+
+## Commands
 
 ```bash
-cd frontend
 npm install
 npm run dev
-```
-
-Open http://localhost:3000
-
-## Build for Vercel
-
-```bash
 npm run build
 ```
 
-This app uses static placeholder data and backend function stubs from `services/apiPlaceholders.js`.
+## Demo Roles
+- Analyst
+- Admin
+
+Role is selected on `/login` and persisted in local storage for UI gating.
+
+## Key UI Modules
+- Dashboard (metrics + AI pipeline)
+- Incidents (filters + modals + playbook generation)
+- Playbooks (attack graph + narrative intelligence)
+- Analytics (behavioral insights)
+- Settings (admin-only governance panels)

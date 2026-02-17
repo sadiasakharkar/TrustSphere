@@ -1,47 +1,38 @@
-# TrustSphere
+# TrustSphere - Offline ACIRS Prototype
 
-TrustSphere is a full frontend prototype for a **Cyber Incident Response Dashboard** built for banking/enterprise SOC workflows.
+TrustSphere is a hackathon-grade frontend prototype for an **AI-driven Autonomous Cyber Incident Response System (ACIRS)** in banking environments.
 
-This repo includes:
-- `frontend/`: Next.js + React + Tailwind CSS application with production-ready UI prototype
-- `backend/`: placeholder structure for future API implementation (no live backend yet)
+The UI is fully offline-focused, role-aware, and designed to explain end-to-end incident response flow without backend connectivity.
 
-## Tech Stack
-- Next.js 14 (Pages Router)
-- React 18
-- Tailwind CSS 3
-- Chart.js + react-chartjs-2
-
-## Features Implemented
-- Dark enterprise theme (`#0D1117`, `#161B22`, cyan/electric-blue accents)
-- Login screen with role selector and placeholder auth action
-- Dashboard with KPI cards and interactive charts
-- Incidents page with filters, risk-scored table, details modal, playbook modal
-- Playbooks page with incident summary, attack graph placeholder, response timeline
-- Analytics page with trend chart and anomalous entities table
-- Settings page with user management and alert source configuration
-- Fully responsive layout with collapsible sidebar and top navigation
-- Placeholder async backend contracts for future integration
+## Highlights
+- Dark enterprise SOC theme (`#0D1117`, `#161B22`, cyan/teal/violet accents)
+- Role-based UI rendering:
+  - **Analyst**: dashboards, incidents, playbooks, analytics, limited settings
+  - **Admin**: all analyst views + user management, system configuration, model training status, audit logs
+- Air-gapped offline visual cues and narrative-first incident explainability
+- Animated charts, risk/severity badges, modals, and responsive layout
+- Backend scaffold included for future integration
 
 ## Repository Structure
 
 ```text
 TrustSphere/
   frontend/
-    assets/
-    components/
-    data/
-    pages/
-    services/
-    styles/
+    pages/        # login, dashboard, incidents, playbooks, analytics, settings
+    components/   # Sidebar, Navbar, Card, Table, Modal, Chart, Badge, Alert
+    context/      # role/session management
+    assets/       # static visuals/icons
+    styles/       # global styles + Tailwind theme mapping
+    services/     # placeholder API signatures
+    data/         # realistic mock data
   backend/
-    routes/
-    controllers/
-    models/
-    utils/
+    routes/       # alerts.js, incidents.js, users.js (+ placeholders)
+    controllers/  # placeholder files
+    models/       # placeholder files
+    utils/        # placeholder files
 ```
 
-## Local Setup
+## Run Locally
 
 ```bash
 cd frontend
@@ -51,7 +42,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-## Production Build
+## Build
 
 ```bash
 cd frontend
@@ -60,20 +51,10 @@ npm start
 ```
 
 ## Vercel Deployment
-- Import this repository into Vercel.
-- Set project root directory to `frontend`.
-- Framework preset: Next.js.
+- Import this repository in Vercel.
+- Set **Root Directory** to `frontend`.
+- Framework preset: **Next.js**.
 - Build command: `npm run build`.
-- Output: default Next.js output.
 
-## Backend Placeholder Notes
-`frontend/services/apiPlaceholders.js` contains empty async function signatures such as:
-- `fetchAlerts()`
-- `fetchIncidents(filters)`
-- `getPlaybook(incidentId)`
-- `fetchAnalytics(range)`
-- `fetchUsers()`
-- `updateUser(userId, payload)`
-- `fetchSettings()`
-
-These are imported across UI pages but intentionally make no real API calls.
+## Backend Integration Ready
+`frontend/services/apiPlaceholders.js` provides empty async contracts (e.g., `fetchIncidents`, `getPlaybook`, `fetchAuditLogs`) to preserve stable signatures for future API wiring.

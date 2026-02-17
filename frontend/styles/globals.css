@@ -39,17 +39,17 @@ body {
 }
 
 .card {
-  @apply bg-panel shadow-card rounded-xl border border-white/5;
+  @apply bg-panel shadow-card rounded-xl border border-white/5 transition-all duration-200 hover:border-accent/20;
 }
 
 .btn-primary {
-  @apply rounded-lg px-4 py-2 font-semibold transition-all duration-200 active:scale-95;
+  @apply rounded-lg px-4 py-2 font-semibold transition-all duration-200 hover:brightness-110 active:scale-95;
   background: linear-gradient(135deg, #00ffff 0%, #4fd1c5 100%);
   color: #0d1117;
 }
 
 .btn-secondary {
-  @apply rounded-lg px-4 py-2 font-semibold transition-all duration-200 active:scale-95;
+  @apply rounded-lg px-4 py-2 font-semibold transition-all duration-200 hover:brightness-110 active:scale-95;
   background: linear-gradient(135deg, #7f5af0 0%, #4fd1c5 100%);
   color: #ffffff;
 }

@@ -1,29 +1,39 @@
+import Card from './Card';
+
 export default function AttackGraphPlaceholder() {
   return (
-    <div className="card p-4">
-      <h3 className="mb-3 text-lg font-semibold text-white">Connected Attack Graph</h3>
-      <svg viewBox="0 0 600 240" className="h-52 w-full rounded-lg bg-bg/70 p-2">
-        <circle cx="90" cy="120" r="26" fill="#7F5AF0" />
-        <text x="70" y="124" fill="#fff" fontSize="12">User</text>
+    <Card
+      title="Correlated Attack Path"
+      subtitle="Phishing -> Privilege Escalation -> Lateral Movement -> Data Exfiltration"
+    >
+      <svg viewBox="0 0 780 250" className="h-56 w-full rounded-lg bg-bg/70 p-2">
+        <defs>
+          <linearGradient id="pathGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#00FFFF" />
+            <stop offset="100%" stopColor="#7F5AF0" />
+          </linearGradient>
+        </defs>
 
-        <circle cx="240" cy="70" r="26" fill="#00FFFF" />
-        <text x="222" y="74" fill="#0D1117" fontSize="12">IAM</text>
+        <rect x="30" y="90" width="150" height="72" rx="12" fill="#161B22" stroke="#00FFFF" />
+        <text x="47" y="120" fill="#E6EDF3" fontSize="12">Initial Access</text>
+        <text x="47" y="140" fill="#00FFFF" fontSize="12">Phishing Link</text>
 
-        <circle cx="240" cy="170" r="26" fill="#4FD1C5" />
-        <text x="222" y="174" fill="#0D1117" fontSize="12">EDR</text>
+        <rect x="220" y="90" width="150" height="72" rx="12" fill="#161B22" stroke="#4FD1C5" />
+        <text x="238" y="120" fill="#E6EDF3" fontSize="12">Privilege Esc.</text>
+        <text x="238" y="140" fill="#4FD1C5" fontSize="12">Token Abuse</text>
 
-        <circle cx="400" cy="120" r="30" fill="#E53935" />
-        <text x="372" y="124" fill="#fff" fontSize="12">Target</text>
+        <rect x="410" y="90" width="150" height="72" rx="12" fill="#161B22" stroke="#7F5AF0" />
+        <text x="427" y="120" fill="#E6EDF3" fontSize="12">Lateral Move</text>
+        <text x="427" y="140" fill="#7F5AF0" fontSize="12">SMB Pivot</text>
 
-        <circle cx="540" cy="120" r="22" fill="#00FFFF" />
-        <text x="522" y="124" fill="#0D1117" fontSize="12">SOC</text>
+        <rect x="600" y="90" width="150" height="72" rx="12" fill="#161B22" stroke="#FF4B4B" />
+        <text x="622" y="120" fill="#E6EDF3" fontSize="12">Objective</text>
+        <text x="622" y="140" fill="#FF4B4B" fontSize="12">Data Exfiltration</text>
 
-        <line x1="116" y1="112" x2="214" y2="78" stroke="#00FFFF" strokeWidth="2" />
-        <line x1="116" y1="128" x2="214" y2="162" stroke="#4FD1C5" strokeWidth="2" />
-        <line x1="266" y1="72" x2="370" y2="112" stroke="#7F5AF0" strokeWidth="2" />
-        <line x1="266" y1="168" x2="370" y2="128" stroke="#00FFFF" strokeWidth="2" />
-        <line x1="430" y1="120" x2="518" y2="120" stroke="#4FD1C5" strokeWidth="2" />
+        <line x1="180" y1="126" x2="220" y2="126" stroke="url(#pathGrad)" strokeWidth="4" />
+        <line x1="370" y1="126" x2="410" y2="126" stroke="url(#pathGrad)" strokeWidth="4" />
+        <line x1="560" y1="126" x2="600" y2="126" stroke="url(#pathGrad)" strokeWidth="4" />
       </svg>
-    </div>
+    </Card>
   );
 }
