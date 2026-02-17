@@ -99,3 +99,34 @@ body {
   0%, 100% { transform: translateY(0px) translateX(0px); }
   50% { transform: translateY(-14px) translateX(10px); }
 }
+
+.scroll-stack > * {
+  animation: sectionRise 640ms ease both;
+}
+
+.scroll-stack > *:nth-child(2) { animation-delay: 80ms; }
+.scroll-stack > *:nth-child(3) { animation-delay: 140ms; }
+.scroll-stack > *:nth-child(4) { animation-delay: 200ms; }
+.scroll-stack > *:nth-child(5) { animation-delay: 260ms; }
+.scroll-stack > *:nth-child(6) { animation-delay: 320ms; }
+
+.scroll-runway {
+  min-height: 42vh;
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes sectionRise {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 rgba(0, 255, 255, 0.08); }
+  50% { box-shadow: 0 0 24px rgba(0, 255, 255, 0.14); }
+}

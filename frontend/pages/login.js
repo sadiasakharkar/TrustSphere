@@ -26,7 +26,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-bg px-4 py-8">
+    <div className="relative min-h-[150vh] bg-bg px-4 py-8">
       <div className="topology-layer" />
       <div className="floating-orb orb-cyan" />
       <div className="floating-orb orb-violet" />
@@ -91,6 +91,21 @@ export default function LoginPage() {
             Forgot password?
           </button>
         </section>
+      </div>
+
+      <div className="relative mx-auto mt-8 grid w-full max-w-6xl gap-4 md:grid-cols-3">
+        <div className="glass-panel">
+          <p className="text-xs uppercase tracking-[0.18em] text-secondary">Transition Layer 01</p>
+          <p className="mt-2 text-sm text-text/80">Entity topology visualization and risk stream interpolation.</p>
+        </div>
+        <div className="glass-panel">
+          <p className="text-xs uppercase tracking-[0.18em] text-accent">Transition Layer 02</p>
+          <p className="mt-2 text-sm text-text/80">Behavioral drift pipeline with adaptive confidence tuning.</p>
+        </div>
+        <div className="glass-panel">
+          <p className="text-xs uppercase tracking-[0.18em] text-violet-300">Transition Layer 03</p>
+          <p className="mt-2 text-sm text-text/80">Narrative intelligence staging for executive response briefings.</p>
+        </div>
       </div>
 
       <Modal title="Password Recovery" open={forgotOpen} onClose={() => setForgotOpen(false)}>
