@@ -23,7 +23,8 @@ export default function IncidentsPage() {
   const [dateWindow, setDateWindow] = useState('Today');
   const [status, setStatus] = useState('All');
   const [selected, setSelected] = useState(null);
-  const [playbookModal, setPlaybookModal] = useState(false);
+  const [activeModal, setActiveModal] = useState(null);
+  const [playbookState, setPlaybookState] = useState('idle');
 
   useEffect(() => {
     fetchIncidents({ severity, type, dateWindow, status });
@@ -42,13 +43,26 @@ export default function IncidentsPage() {
 
   const openDetails = async (row) => {
     setSelected(row);
+    setActiveModal('details');
     await getIncidentDetails(row.id);
   };
 
   const onGeneratePlaybook = async (row) => {
     setSelected(row);
-    setPlaybookModal(true);
-    await getPlaybook(row.id);
+    setActiveModal('playbook');
+    setPlaybookState('loading');
+    try {
+      await getPlaybook(row.id);
+      setPlaybookState('ready');
+    } catch {
+      setPlaybookState('error');
+    }
+  };
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setSelected(null);
+    setPlaybookState('idle');
   };
 
   return (
@@ -117,7 +131,7 @@ export default function IncidentsPage() {
           />
         </Card>
 
-        <Modal title="Incident Details" open={!!selected && !playbookModal} onClose={() => setSelected(null)}>
+        <Modal title="Incident Details" open={activeModal === 'details'} onClose={closeModal}>
           {selected && (
             <div className="space-y-2 text-sm">
               <p><span className="text-text/70">Incident ID:</span> {selected.id}</p>
@@ -130,14 +144,21 @@ export default function IncidentsPage() {
           )}
         </Modal>
 
-        <Modal title="Playbook Generation" open={playbookModal} onClose={() => setPlaybookModal(false)}>
-          <p className="text-sm text-text/90">Playbook draft generated for incident <span className="text-accent">{selected?.id}</span>.</p>
+        <Modal title="Playbook Generation" open={activeModal === 'playbook'} onClose={closeModal}>
+          <p className="text-sm text-text/90">Playbook draft for incident <span className="text-accent">{selected?.id}</span>.</p>
           <div className="mt-4 rounded-lg border border-white/10 bg-bg/60 p-3 text-xs text-text/80">
-            Suggested control set: isolate endpoint, disable token, update IOC signatures, monitor lateral movement channels.
+            {playbookState === 'loading' && 'Generating recommended controls...'}
+            {playbookState === 'ready' &&
+              'Suggested control set: isolate endpoint, disable token, update IOC signatures, monitor lateral movement channels.'}
+            {playbookState === 'error' && 'Playbook generation failed (placeholder). Please retry.'}
           </div>
           <div className="mt-4 flex gap-2">
-            <button className="btn-primary" onClick={() => setPlaybookModal(false)}>Confirm</button>
-            <button className="btn-secondary" onClick={() => setPlaybookModal(false)}>Review</button>
+            <button className="btn-primary" onClick={closeModal} disabled={playbookState === 'loading'}>
+              Confirm
+            </button>
+            <button className="btn-secondary" onClick={closeModal} disabled={playbookState === 'loading'}>
+              Review
+            </button>
           </div>
         </Modal>
       </Layout>
