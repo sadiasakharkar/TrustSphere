@@ -1,13 +1,15 @@
 export default function Modal({ title, open, onClose, children }) {
+  if (!open) return null;
+
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 transition-opacity duration-200 ${
-        open ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-      }`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 transition-opacity duration-200"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        className={`card w-full max-w-2xl p-5 transition-transform duration-200 ${open ? 'scale-100' : 'scale-95'}`}
+        className="card w-full max-w-2xl scale-100 p-5 transition-transform duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-white/10 pb-3">
