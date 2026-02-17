@@ -53,3 +53,49 @@ body {
   background: linear-gradient(135deg, #7f5af0 0%, #4fd1c5 100%);
   color: #ffffff;
 }
+
+.glass-panel {
+  @apply rounded-2xl border border-white/15 bg-panel/55 p-6 shadow-card backdrop-blur-xl;
+}
+
+.topology-layer {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(0, 255, 255, 0.12), transparent 30%),
+    radial-gradient(circle at 80% 15%, rgba(127, 90, 240, 0.14), transparent 35%),
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, 42px 42px, 42px 42px;
+  opacity: 0.55;
+}
+
+.floating-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(30px);
+  animation: floatShift 9s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.orb-cyan {
+  top: 8%;
+  left: 10%;
+  width: 220px;
+  height: 220px;
+  background: rgba(0, 255, 255, 0.18);
+}
+
+.orb-violet {
+  bottom: 12%;
+  right: 8%;
+  width: 280px;
+  height: 280px;
+  background: rgba(127, 90, 240, 0.2);
+  animation-delay: 1.5s;
+}
+
+@keyframes floatShift {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-14px) translateX(10px); }
+}
