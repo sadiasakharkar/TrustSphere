@@ -7,3 +7,4 @@ networkx
 fastapi
 uvicorn
 joblib
+faker
