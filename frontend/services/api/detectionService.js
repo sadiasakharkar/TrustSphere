@@ -1,49 +1,16 @@
-import { administrationWorkspace, detectionsWorkspace, investigationWorkspace, reportsWorkspace, responseWorkspace } from '../../data/socConsoleData';
+import { getAdminUsers, getAdministrationWorkspace } from './admin.service.js';
+import { getDetectionsFeed } from './monitoring.service.js';
+import { getInvestigationWorkspace } from './investigation.service.js';
+import { getPlaybooks, runPlaybook } from './playbook.service.js';
+import { getReportsWorkspace } from './report.service.js';
 
-const wait = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** @returns {Promise<import('./contracts').DetectionResponse>} */
 export async function getDetectionsOverview() {
-  await wait();
+  const response = await getDetectionsFeed();
   return {
-    schemaVersion: 'frontend.detections.v1',
-    generatedAt: new Date().toISOString(),
-    ...detectionsWorkspace
+    schemaVersion: 'frontend.detections.v2',
+    generatedAt: response.generatedAt,
+    detectors: response.detectors
   };
 }
 
-export async function getInvestigationWorkspace() {
-  await wait();
-  return {
-    schemaVersion: 'frontend.investigations.v1',
-    generatedAt: new Date().toISOString(),
-    ...investigationWorkspace
-  };
-}
-
-export async function getResponseWorkspace() {
-  await wait();
-  return {
-    schemaVersion: 'frontend.response.v1',
-    generatedAt: new Date().toISOString(),
-    ...responseWorkspace
-  };
-}
-
-export async function getReportsWorkspace() {
-  await wait();
-  return {
-    schemaVersion: 'frontend.reports.v1',
-    generatedAt: new Date().toISOString(),
-    ...reportsWorkspace
-  };
-}
-
-export async function getAdministrationWorkspace() {
-  await wait();
-  return {
-    schemaVersion: 'frontend.administration.v1',
-    generatedAt: new Date().toISOString(),
-    ...administrationWorkspace
-  };
-}
+export { getInvestigationWorkspace, getAdministrationWorkspace, getPlaybooks, runPlaybook, getReportsWorkspace, getAdminUsers };
