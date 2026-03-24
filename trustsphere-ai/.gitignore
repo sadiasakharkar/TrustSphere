@@ -2,3 +2,8 @@
 __pycache__/
 *.pyc
 outputs/
+artifacts/
+saved_models/anomaly_model.pkl
+saved_models/preprocessing_pipeline.pkl
+saved_models/feature_columns.json
+saved_models/model_metadata.json
