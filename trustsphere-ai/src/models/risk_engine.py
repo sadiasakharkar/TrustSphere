@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +70,8 @@ class UEBARiskEngine:
         try:
             df.to_parquet(destination, index=False)
         except Exception as exc:
+            if _strict_production_mode():
+                raise RuntimeError(f"Parquet export failed for {destination} in production mode.") from exc
             fallback = destination.with_suffix(".csv")
             df.to_csv(fallback, index=False)
             LOGGER.warning("Parquet export failed for %s (%s). Wrote CSV fallback to %s", destination, exc, fallback)
@@ -100,3 +103,7 @@ class UEBARiskEngine:
             return pd.Series(np.zeros(len(frame)), index=frame.index, dtype=float)
         normalized = (cumulative - cumulative.min()) / (cumulative.max() - cumulative.min())
         return normalized.astype(float)
+
+
+def _strict_production_mode() -> bool:
+    return os.getenv("TRUSTSPHERE_ENV", "development").strip().lower() in {"prod", "production"}

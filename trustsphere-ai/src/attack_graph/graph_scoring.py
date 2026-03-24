@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -81,6 +82,8 @@ class GraphRiskScorer:
         try:
             frame.to_parquet(output_path, index=False)
         except Exception as exc:
+            if _strict_production_mode():
+                raise RuntimeError(f"Parquet export failed for {output_path} in production mode.") from exc
             fallback = output_path.with_suffix(".csv")
             frame.to_csv(fallback, index=False)
             LOGGER.warning("Parquet export failed for %s (%s). Wrote CSV fallback to %s", output_path, exc, fallback)
@@ -94,3 +97,7 @@ class GraphRiskScorer:
         if score >= 50:
             return "MEDIUM"
         return "LOW"
+
+
+def _strict_production_mode() -> bool:
+    return os.getenv("TRUSTSPHERE_ENV", "development").strip().lower() in {"prod", "production"}

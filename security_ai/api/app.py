@@ -9,7 +9,7 @@ import sys
 import time
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
 try:
     from fastapi import FastAPI, HTTPException, Request, Response
@@ -46,45 +46,23 @@ TRUSTSPHERE_AI_DIR = BASE_DIR / "trustsphere-ai"
 if str(TRUSTSPHERE_AI_DIR) not in sys.path:
     sys.path.insert(0, str(TRUSTSPHERE_AI_DIR))
 
-from src.contracts import INCIDENT_SCHEMA_VERSION, IncidentReport, NormalizedLog
+from src.contracts import (
+    ATTACHMENT_REQUEST_SCHEMA_VERSION,
+    CREDENTIAL_REQUEST_SCHEMA_VERSION,
+    EMAIL_REQUEST_SCHEMA_VERSION,
+    INCIDENT_SCHEMA_VERSION,
+    PROMPT_GUARD_REQUEST_SCHEMA_VERSION,
+    URL_REQUEST_SCHEMA_VERSION,
+    AttachmentDetectionRequest,
+    CredentialDetectionRequest,
+    EmailDetectionRequest,
+    IncidentAnalysisRequest,
+    IncidentReport,
+    PromptGuardRequest,
+    URLDetectionRequest,
+)
 
 LOGGER = logging.getLogger(__name__)
-
-
-class EmailDetectionRequest(BaseModel):
-    email_text: str = Field(default="")
-    subject: str = Field(default="")
-    body: str = Field(default="")
-    sender: str = Field(default="unknown@example.com")
-    attachments: str = Field(default="")
-
-
-class URLDetectionRequest(BaseModel):
-    url: str
-
-
-class CredentialDetectionRequest(BaseModel):
-    text: str
-    commit_message: str = Field(default="")
-    paste_context: str = Field(default="")
-
-
-class AttachmentDetectionRequest(BaseModel):
-    filename: str
-    size_bytes: int
-    content_text: str = Field(default="")
-    event_context: str = Field(default="")
-    post_download_action: str = Field(default="")
-
-
-class IncidentAnalysisRequest(BaseModel):
-    schema_version: str = Field(default=INCIDENT_SCHEMA_VERSION)
-    logs: list[NormalizedLog] = Field(default_factory=list)
-
-
-class PromptGuardRequest(BaseModel):
-    prompt: str
-
 
 if FastAPI is not None:
     app = FastAPI(title="TrustSphere Security AI Platform", version="2.0.0")
@@ -92,6 +70,14 @@ if FastAPI is not None:
     loader = ModelLoader.get_instance()
     services = DetectorService(loader)
     registry = MLflowRegistry(base_dir=__import__("pathlib").Path(__file__).resolve().parents[1])
+    request_schema_registry = {
+        "/detect/email": (EMAIL_REQUEST_SCHEMA_VERSION, EmailDetectionRequest),
+        "/detect/url": (URL_REQUEST_SCHEMA_VERSION, URLDetectionRequest),
+        "/detect/credential": (CREDENTIAL_REQUEST_SCHEMA_VERSION, CredentialDetectionRequest),
+        "/detect/attachment": (ATTACHMENT_REQUEST_SCHEMA_VERSION, AttachmentDetectionRequest),
+        "/guard/prompt": (PROMPT_GUARD_REQUEST_SCHEMA_VERSION, PromptGuardRequest),
+        "/analyze/incident": (INCIDENT_SCHEMA_VERSION, IncidentAnalysisRequest),
+    }
 
     @app.middleware("http")
     async def error_handling_middleware(request: Request, call_next):
@@ -214,21 +200,22 @@ if FastAPI is not None:
                 request_id=request_id,
             )
 
-        if endpoint == "/analyze/incident":
-            if payload.get("schema_version") != INCIDENT_SCHEMA_VERSION:
+        if endpoint in request_schema_registry:
+            expected_version, schema_model = request_schema_registry[endpoint]
+            if payload.get("schema_version") != expected_version:
                 return error_response(
                     status_code=422,
                     error_code="invalid_schema_version",
-                    message=f"Unsupported schema_version for /analyze/incident. Expected {INCIDENT_SCHEMA_VERSION}.",
+                    message=f"Unsupported schema_version for {endpoint}. Expected {expected_version}.",
                     request_id=request_id,
                 )
             try:
-                IncidentAnalysisRequest.model_validate(payload)
+                schema_model.model_validate(payload)
             except ValidationError as exc:
                 return error_response(
                     status_code=422,
                     error_code="schema_validation_failed",
-                    message="Incident request schema validation failed.",
+                    message=f"Request schema validation failed for {endpoint}.",
                     request_id=request_id,
                     details=exc.errors(),
                 )

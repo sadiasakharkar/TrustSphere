@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -341,6 +342,8 @@ class BehavioralFeatureEngineer:
         try:
             dataframe.to_parquet(output_path)
         except Exception as exc:
+            if _strict_production_mode():
+                raise RuntimeError(f"Parquet export failed for {output_path} in production mode.") from exc
             fallback_path = output_path.with_suffix(".csv")
             dataframe.to_csv(fallback_path)
             LOGGER.warning("Parquet export failed for %s (%s). Wrote CSV fallback to %s", output_path, exc, fallback_path)
@@ -392,3 +395,7 @@ class BehavioralFeatureEngineer:
         if probabilities.empty:
             return 0.0
         return float(-(probabilities * np.log2(probabilities + 1e-12)).sum())
+
+
+def _strict_production_mode() -> bool:
+    return os.getenv("TRUSTSPHERE_ENV", "development").strip().lower() in {"prod", "production"}
