@@ -14,14 +14,7 @@ from ..attack_graph.event_linker import EventLinker
 from ..attack_graph.graph_scoring import GraphRiskScorer
 from ..attack_graph.graph_visualizer import GraphVisualizer
 from ..attack_graph.mitre_mapper import MITREMapper
-from ..llm.incident_generator import IncidentReportGenerator
-from ..llm.ollama_client import LocalLLM, write_install_notes
-from ..llm.playbook_generator import PlaybookGenerator
-from ..llm.report_exporter import ReportExporter
-from ..models.config import PROCESSED_DATA_DIR
-from ..models.inference_pipeline import UEBAInferencePipeline
-from ..models.risk_engine import UEBARiskEngine
-from .contracts import (
+from ..contracts import (
     AnomalyResult,
     AttackChain,
     AttackGraphEdge,
@@ -33,6 +26,13 @@ from .contracts import (
     NormalizedLog,
     RiskResult,
 )
+from ..llm.incident_generator import IncidentReportGenerator
+from ..llm.ollama_client import LocalLLM, write_install_notes
+from ..llm.playbook_generator import PlaybookGenerator
+from ..llm.report_exporter import ReportExporter
+from ..models.config import PROCESSED_DATA_DIR
+from ..models.inference_pipeline import UEBAInferencePipeline
+from ..models.risk_engine import UEBARiskEngine
 
 LOGGER = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -63,9 +63,12 @@ class TrustSpherePipeline:
         normalized_logs = self._coerce_logs(logs or [])
         events_df = self._logs_to_frame(normalized_logs)
         feature_artifacts = self.ueba_pipeline.feature_engineer.transform(events_df)
+        feature_matrix = self._to_feature_matrix(feature_artifacts)
         anomaly_entity_df = self.ueba_pipeline.predict(events_df)
+        anomaly_results = self._to_anomaly_results(anomaly_entity_df)
         event_with_anomaly = self._attach_entity_scores(events_df, anomaly_entity_df)
         risk_df = self._build_risk_frame(event_with_anomaly)
+        risk_results = self._to_risk_results(risk_df)
         graph_result = self._build_attack_graph(risk_df)
         context = self._build_context(graph_result)
         self._persist_context(context)
@@ -81,9 +84,9 @@ class TrustSpherePipeline:
             timestamp=pd.to_datetime(incident_payload["timestamp"], utc=True).to_pydatetime(),
             severity=str(incident_payload["severity"]),
             confidence=str(incident_payload["confidence"]),
-            anomaly_results=self._to_anomaly_results(anomaly_entity_df),
-            risk_results=self._to_risk_results(risk_df),
-            feature_matrix=self._to_feature_matrix(feature_artifacts),
+            anomaly_results=anomaly_results,
+            risk_results=risk_results,
+            feature_matrix=feature_matrix,
             attack_graph=graph_result,
             incident_summary=incident_summary,
             soc_dashboard=soc_dashboard,
@@ -237,7 +240,12 @@ class TrustSpherePipeline:
                     },
                 )
             )
-        return FeatureMatrix(rows=rows, feature_columns=list(feature_artifacts.selected_columns))
+        return FeatureMatrix.model_validate(
+            {
+                "rows": [row.model_dump(mode="python") for row in rows],
+                "feature_columns": list(feature_artifacts.selected_columns),
+            }
+        )
 
     def _to_anomaly_results(self, anomaly_df: pd.DataFrame) -> list[AnomalyResult]:
         results: list[AnomalyResult] = []
@@ -250,7 +258,7 @@ class TrustSpherePipeline:
                     anomaly_label=int(row["anomaly_label"]),
                 )
             )
-        return results
+        return [AnomalyResult.model_validate(result.model_dump(mode="python")) for result in results]
 
     def _to_risk_results(self, risk_df: pd.DataFrame) -> list[RiskResult]:
         deduped = risk_df.sort_values(["entity_id", "timestamp"]).drop_duplicates(subset=["entity_id", "timestamp"], keep="last")
@@ -267,7 +275,7 @@ class TrustSpherePipeline:
                     historical_risk=float(row["historical_risk"]),
                 )
             )
-        return results
+        return [RiskResult.model_validate(result.model_dump(mode="python")) for result in results]
 
     def _unique_preserve(self, values: list[Any]) -> list[Any]:
         seen = set()

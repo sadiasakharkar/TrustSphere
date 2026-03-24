@@ -1,6 +1,6 @@
 """Unified pipeline interfaces for TrustSphere intelligence."""
 
-from .contracts import (
+from ..contracts import (
     AnomalyResult,
     AttackChain,
     AttackGraphEdge,

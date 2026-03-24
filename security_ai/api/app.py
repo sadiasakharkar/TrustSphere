@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import logging
+import json
 from pathlib import Path
 import sys
 import time
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 try:
     from fastapi import FastAPI, HTTPException, Request, Response
@@ -30,7 +31,7 @@ TRUSTSPHERE_AI_DIR = BASE_DIR / "trustsphere-ai"
 if str(TRUSTSPHERE_AI_DIR) not in sys.path:
     sys.path.insert(0, str(TRUSTSPHERE_AI_DIR))
 
-from src.pipeline.contracts import IncidentReport, NormalizedLog
+from src.contracts import INCIDENT_SCHEMA_VERSION, IncidentReport, NormalizedLog
 
 LOGGER = logging.getLogger(__name__)
 
@@ -62,6 +63,7 @@ class AttachmentDetectionRequest(BaseModel):
 
 
 class IncidentAnalysisRequest(BaseModel):
+    schema_version: str = Field(default=INCIDENT_SCHEMA_VERSION)
     logs: list[NormalizedLog] = Field(default_factory=list)
 
 
@@ -90,6 +92,39 @@ if FastAPI is not None:
             raise HTTPException(status_code=500, detail="Internal server error")
         finally:
             REQUEST_LATENCY.labels(endpoint).observe(time.perf_counter() - start)
+
+    @app.middleware("http")
+    async def schema_validation_middleware(request: Request, call_next):
+        if request.method.upper() != "POST" or getattr(request, "url", None) is None:
+            return await call_next(request)
+
+        endpoint = request.url.path
+        if endpoint != "/analyze/incident":
+            return await call_next(request)
+
+        body = await request.body()
+        if not body:
+            raise HTTPException(status_code=422, detail="Request body is required.")
+        try:
+            payload = json.loads(body.decode("utf-8"))
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=422, detail=f"Invalid JSON payload: {exc.msg}") from exc
+
+        if payload.get("schema_version") != INCIDENT_SCHEMA_VERSION:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Unsupported schema_version for /analyze/incident. Expected {INCIDENT_SCHEMA_VERSION}.",
+            )
+        try:
+            IncidentAnalysisRequest.model_validate(payload)
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+        async def receive() -> dict[str, Any]:
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        request._receive = receive
+        return await call_next(request)
 
     @app.on_event("startup")
     async def startup_event() -> None:
