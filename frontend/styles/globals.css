@@ -22,7 +22,7 @@ body {
   background: var(--ts-surface-lowest, #0a0e14);
   color: var(--ts-text, #dfe2eb);
   font-family: 'Inter', system-ui, sans-serif;
-  background-image: radial-gradient(circle at 10% 0%, rgba(173, 198, 255, 0.08), transparent 28%), radial-gradient(circle at 90% 0%, rgba(74, 225, 118, 0.06), transparent 24%);
+  overflow-x: hidden;
 }
 
 * {
@@ -74,7 +74,7 @@ body {
   }
 
   .soc-workspace {
-    @apply min-h-screen px-6 pb-10 pt-6 transition-all duration-300;
+    @apply min-h-screen px-4 pb-8 pt-4 transition-all duration-300 md:px-6 md:pb-10 md:pt-6;
   }
 
   .soc-panel {

@@ -1,54 +1,44 @@
-import { useEffect, useMemo, useState } from 'react';
-import { notifications } from '../../data/socConsoleData';
-import CommandPalette from './CommandPalette';
-import RightInsightDrawer from './RightInsightDrawer';
+import { useEffect, useState } from 'react';
 import SocSidebar from './SocSidebar';
 import SocTopbar from './SocTopbar';
-import { socNavigation } from './navigation';
 
-export default function AppShell({ children, insightSummary }) {
+export default function AppShell({ children }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     const onResize = () => {
-      setCollapsed(window.innerWidth < 1280);
-      setDrawerOpen(window.innerWidth >= 1440);
+      const desktop = window.innerWidth >= 1024;
+      setIsDesktop(desktop);
+      if (!desktop) {
+        setCollapsed(false);
+      }
+      if (desktop) {
+        setMobileOpen(false);
+      }
     };
     onResize();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setPaletteOpen((value) => !value);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  const paletteActions = useMemo(() => socNavigation.map((item) => ({ href: item.href, label: item.label, section: item.section })), []);
-  const contentOffset = collapsed ? 88 : 256;
-  const rightOffset = drawerOpen ? 352 : 0;
+  const sidebarWidth = collapsed ? 88 : 256;
 
   return (
     <div className="soc-shell">
-      <SocSidebar collapsed={collapsed} onToggle={() => setCollapsed((value) => !value)} />
-      <div className="soc-workspace" style={{ marginLeft: contentOffset, marginRight: rightOffset }}>
-        <SocTopbar
-          onTogglePalette={() => setPaletteOpen(true)}
-          onToggleInsights={() => setDrawerOpen((value) => !value)}
-          notifications={notifications}
-        />
-        <div className="pt-6">{children}</div>
-      </div>
-      <RightInsightDrawer open={drawerOpen} summary={insightSummary} />
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} actions={paletteActions} />
+      <SocSidebar
+        collapsed={collapsed}
+        mobileOpen={mobileOpen}
+        onToggle={() => setCollapsed((value) => !value)}
+        onClose={() => setMobileOpen(false)}
+      />
+      <main className="soc-workspace" style={isDesktop ? { marginLeft: sidebarWidth } : undefined}>
+        <div className="mx-auto w-full max-w-[1440px]">
+          <SocTopbar onMenu={() => setMobileOpen(true)} />
+          <div className="pt-6">{children}</div>
+        </div>
+      </main>
     </div>
   );
 }

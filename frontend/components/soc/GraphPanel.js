@@ -1,14 +1,14 @@
-import SeverityBadge from './SeverityBadge';
+import StatusBadge from './StatusBadge';
 
 export default function GraphPanel({ graph }) {
   return (
-    <section className="soc-panel soc-grid-bg overflow-hidden">
+    <section className="soc-grid-bg overflow-hidden">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <p className="soc-kicker">Threat Graph</p>
           <h3 className="soc-section-title">Correlated attacker movement</h3>
         </div>
-        <SeverityBadge level="critical">2 active chains</SeverityBadge>
+        <StatusBadge tone="critical">2 active chains</StatusBadge>
       </div>
       <div className="relative min-h-[360px] rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.78)]">
         {graph.nodes.map((node) => (
