@@ -1,0 +1,8 @@
+data/raw/logs.csv
+data/processed/normalized_logs.csv
+data/processed/features.csv
+artifacts/*.pkl
+artifacts/*.json
+artifacts/*.csv
+__pycache__/
+*.pyc
