@@ -20,6 +20,14 @@ pip install -r requirements.txt
 uvicorn api.app:app --reload
 ```
 
+## Development Roadmap
+
+### Phase A - Setup (Today)
+
+- [x] Create folders
+- [x] Setup venv
+- [x] Install packages
+
 ## Notes
 
 - This is scaffolded for future TrustSphere backend/ML integration.
