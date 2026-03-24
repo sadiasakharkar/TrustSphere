@@ -4,6 +4,11 @@ __pycache__/
 outputs/
 artifacts/
 saved_models/anomaly_model.pkl
+saved_models/model_iforest.pkl
+saved_models/model_autoencoder.pt
+saved_models/scaler.pkl
 saved_models/preprocessing_pipeline.pkl
 saved_models/feature_columns.json
 saved_models/model_metadata.json
+data/processed/*.csv
+data/processed/*.parquet
