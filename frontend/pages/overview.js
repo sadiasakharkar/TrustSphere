@@ -8,8 +8,9 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
-import { incidentWorkspace } from '../data/socConsoleData';
+import EmptyState from '../components/soc/EmptyState';
 import { getOverviewSummary } from '../services/api/overviewService';
+import { getIncidentDetail } from '../services/api/incidentService';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -21,9 +22,28 @@ const columns = [
 
 export default function OverviewPage() {
   const [data, setData] = useState(null);
+  const [focusIncident, setFocusIncident] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getOverviewSummary().then(setData);
+    let active = true;
+    (async () => {
+      try {
+        const summary = await getOverviewSummary();
+        if (!active) return;
+        setData(summary);
+        const primary = summary?.criticalQueue?.[0]?.id;
+        if (primary) {
+          const detail = await getIncidentDetail(primary);
+          if (active) setFocusIncident(detail);
+        }
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load overview data.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -37,7 +57,7 @@ export default function OverviewPage() {
             actions={<button className="soc-btn-secondary">Last 24h</button>}
           />
 
-          {!data ? <LoadingSkeleton rows={5} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Overview unavailable" detail={error} /> : (
             <>
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {data.metrics.map((metric) => (
@@ -87,13 +107,13 @@ export default function OverviewPage() {
                 <div>
                   <SectionHeader eyebrow="Activity" title="Investigation timeline" description="Recent correlated activity requiring continued monitoring." />
                   <div className="mt-4">
-                    <TimelinePanel items={incidentWorkspace.timeline} />
+                    <TimelinePanel items={focusIncident?.timeline || []} />
                   </div>
                 </div>
                 <div className="soc-panel">
                   <SectionHeader eyebrow="Summary" title="Current analyst notes" description="Operational context for the top active case." />
                   <div className="mt-4 space-y-3">
-                    {incidentWorkspace.evidence.map((item) => (
+                    {(focusIncident?.evidence || []).map((item) => (
                       <div key={item.title} className="soc-panel-muted">
                         <p className="text-sm font-semibold text-white">{item.title}</p>
                         <p className="mt-2 text-sm leading-6 soc-text-muted">{item.content}</p>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
+import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
@@ -18,9 +19,21 @@ const columns = [
 
 export default function InvestigationsPage() {
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getInvestigationWorkspace().then(setData);
+    let active = true;
+    (async () => {
+      try {
+        const workspace = await getInvestigationWorkspace();
+        if (active) setData(workspace);
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load investigations.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -39,7 +52,7 @@ export default function InvestigationsPage() {
             }
           />
 
-          {!data ? <LoadingSkeleton rows={5} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Investigations unavailable" detail={error} /> : (
             <div className="soc-panel">
               <DataTable
                 columns={columns}

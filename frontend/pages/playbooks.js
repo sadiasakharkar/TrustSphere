@@ -1,10 +1,71 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import Layout from '../components/Layout';
+import RequireAuth from '../components/RequireAuth';
+import EmptyState from '../components/soc/EmptyState';
+import LoadingSkeleton from '../components/soc/LoadingSkeleton';
+import PageContainer from '../components/soc/PageContainer';
+import PlaybookChecklist from '../components/soc/PlaybookChecklist';
+import SectionHeader from '../components/soc/SectionHeader';
+import StatusBadge from '../components/soc/StatusBadge';
+import { getPlaybooks, runPlaybook } from '../services/api/detectionService';
 
-export default function PlaybooksCompatPage() {
-  const router = useRouter();
+export default function PlaybooksPage() {
+  const [data, setData] = useState(null);
+  const [execution, setExecution] = useState(null);
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    router.replace('/response');
-  }, [router]);
-  return null;
+    let active = true;
+    (async () => {
+      try {
+        const response = await getPlaybooks();
+        if (active) setData(response.playbooks || []);
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load playbooks.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <RequireAuth>
+      <Layout insightSummary={{ title: 'Playbook execution', description: 'Use backend-generated response steps to move from confirmed incident evidence into containment and recovery.' }}>
+        <PageContainer>
+          <SectionHeader
+            eyebrow="Playbooks"
+            title="Response Playbooks"
+            description="Review and prepare the current SOC response plan."
+          />
+
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Playbooks unavailable" detail={error} /> : (
+            <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
+              <section className="soc-panel">
+                <SectionHeader eyebrow="Catalog" title={data?.[0]?.name || 'No playbook loaded'} />
+                <div className="mt-4 flex items-center gap-3">
+                  <StatusBadge tone="ready">{data?.length || 0} available</StatusBadge>
+                  <button
+                    className="soc-btn-primary"
+                    onClick={async () => {
+                      const result = await runPlaybook('INC-21403', data?.[0]?.id);
+                      setExecution(result);
+                    }}
+                  >
+                    Prepare execution
+                  </button>
+                </div>
+              </section>
+              <section className="soc-panel">
+                <SectionHeader eyebrow="Steps" title="Recommended response sequence" />
+                <div className="mt-4">
+                  <PlaybookChecklist steps={execution?.playbook?.steps || data?.[0]?.steps || []} />
+                </div>
+              </section>
+            </div>
+          )}
+        </PageContainer>
+      </Layout>
+    </RequireAuth>
+  );
 }

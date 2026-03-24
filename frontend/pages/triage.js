@@ -1,10 +1,1 @@
-import { useEffect } from 'react';
-import { useRouter } from 'next/router';
-
-export default function TriageCompatPage() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace('/incidents');
-  }, [router]);
-  return null;
-}
+export { default } from './incidents';

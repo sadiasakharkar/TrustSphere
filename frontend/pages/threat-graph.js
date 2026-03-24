@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import GraphPanel from '../components/soc/GraphPanel';
+import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
@@ -10,9 +11,21 @@ import { getThreatGraph } from '../services/api/graphService';
 
 export default function ThreatGraphPage() {
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getThreatGraph().then(setData);
+    let active = true;
+    (async () => {
+      try {
+        const graph = await getThreatGraph();
+        if (active) setData(graph);
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load attack graph.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -25,7 +38,7 @@ export default function ThreatGraphPage() {
             description="Trace attacker movement through a centered graph view and validate chain severity using the supporting context panel."
           />
 
-          {!data ? <LoadingSkeleton rows={5} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Attack graph unavailable" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.35fr,0.65fr]">
               <div className="soc-panel">
                 <GraphPanel graph={data} />

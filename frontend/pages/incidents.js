@@ -8,8 +8,9 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
-import { incidentWorkspace } from '../data/socConsoleData';
+import EmptyState from '../components/soc/EmptyState';
 import { getTriageQueue } from '../services/api/incidentService';
+import { getIncidentDetail } from '../services/api/incidentService';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -21,9 +22,28 @@ const columns = [
 
 export default function IncidentsPage() {
   const [data, setData] = useState(null);
+  const [focusIncident, setFocusIncident] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    getTriageQueue().then(setData);
+    let active = true;
+    (async () => {
+      try {
+        const queue = await getTriageQueue();
+        if (!active) return;
+        setData(queue);
+        const firstId = queue?.queue?.[0]?.id;
+        if (firstId) {
+          const detail = await getIncidentDetail(firstId);
+          if (active) setFocusIncident(detail);
+        }
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load incidents.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -37,7 +57,7 @@ export default function IncidentsPage() {
             actions={<button className="soc-btn-secondary">Assigned to me</button>}
           />
 
-          {!data ? <LoadingSkeleton rows={5} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Incidents unavailable" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
               <div className="soc-panel">
                 <DataTable
@@ -65,17 +85,17 @@ export default function IncidentsPage() {
 
               <div className="space-y-6">
                 <div className="soc-panel">
-                  <SectionHeader eyebrow="Current focus" title={incidentWorkspace.summary.title} />
+                  <SectionHeader eyebrow="Current focus" title={focusIncident?.summary?.title || 'No active case'} />
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <StatusBadge tone={incidentWorkspace.summary.severity}>{incidentWorkspace.summary.severity}</StatusBadge>
-                    <StatusBadge tone="medium">Confidence {incidentWorkspace.summary.confidence}</StatusBadge>
+                    <StatusBadge tone={focusIncident?.summary?.severity || 'medium'}>{focusIncident?.summary?.severity || 'Medium'}</StatusBadge>
+                    <StatusBadge tone="medium">Confidence {focusIncident?.summary?.confidence || '0.00'}</StatusBadge>
                   </div>
-                  <p className="mt-4 text-sm leading-6 soc-text-muted">{incidentWorkspace.summary.mitre.join(' · ')}</p>
+                  <p className="mt-4 text-sm leading-6 soc-text-muted">{focusIncident?.summary?.mitre?.join(' · ') || 'No MITRE mapping available.'}</p>
                 </div>
                 <div>
                   <SectionHeader eyebrow="Workflow" title="Current case timeline" />
                   <div className="mt-4">
-                    <TimelinePanel items={incidentWorkspace.timeline} />
+                    <TimelinePanel items={focusIncident?.timeline || []} />
                   </div>
                 </div>
               </div>

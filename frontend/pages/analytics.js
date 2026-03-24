@@ -1,13 +1,15 @@
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
-import { AnomalyLineChart, DualSeriesBarChart } from '../components/Charts';
+import { AnomalyLineChart, SeverityBarChart } from '../components/Charts';
 import Card from '../components/Card';
 import DataTable from '../components/soc/DataTable';
+import EmptyState from '../components/soc/EmptyState';
+import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { analyticsTrend, anomalousEntities, behavioralDeviationByZone, correlatedAlertsByZone } from '../data/mockData';
+import { getAnalyticsWorkspace } from '../services/api/analytics.service';
 
 const columns = [
   { key: 'entity', label: 'Entity' },
@@ -17,7 +19,23 @@ const columns = [
 ];
 
 export default function AnalyticsPage() {
-  const rows = useMemo(() => anomalousEntities, []);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const workspace = await getAnalyticsWorkspace();
+        if (active) setData(workspace);
+      } catch (err) {
+        if (active) setError(err.message || 'Unable to load analytics.');
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <RequireAuth>
@@ -29,23 +47,29 @@ export default function AnalyticsPage() {
             description="Review anomaly trends and concentration by entity without clutter. This page is intentionally sparse so charts remain readable."
           />
 
-          <section className="grid gap-6 xl:grid-cols-2">
-            <AnomalyLineChart series={analyticsTrend} title="Behavioral Deviation Trend" label="Deviation score" />
-            <DualSeriesBarChart labels={['Zone A', 'Zone B', 'Zone C', 'Zone D', 'Zone E', 'Zone F']} firstSeries={behavioralDeviationByZone} secondSeries={correlatedAlertsByZone} title="Deviation vs correlated alerts" />
-          </section>
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Analytics unavailable" detail={error} /> : (
+            <>
+              <section className="grid gap-6 xl:grid-cols-2">
+                <AnomalyLineChart series={data.riskDistribution} title="Incident Risk Distribution" label="Risk score" />
+                <SeverityBarChart values={data.severityValues} title="Severity Distribution" />
+              </section>
 
-          <Card title="Top anomalous entities" subtitle="Ranked by current behavioral risk score.">
-            <DataTable
-              columns={columns}
-              rows={rows}
-              getRowKey={(row) => row.entity}
-              renderCell={(row, key) => {
-                if (key === 'entity') return <span className="font-semibold text-white">{row.entity}</span>;
-                if (key === 'score') return <StatusBadge tone={row.score > 90 ? 'critical' : row.score > 80 ? 'high' : 'medium'}>{row.score}</StatusBadge>;
-                return row[key];
-              }}
-            />
-          </Card>
+              <Card title="Recent correlated activity" subtitle="Backend-aggregated operational activity from the SOC metrics endpoint.">
+                <DataTable
+                  columns={columns}
+                  rows={data.recentActivity}
+                  getRowKey={(row) => row.id}
+                  renderCell={(row, key) => {
+                    if (key === 'entity') return <span className="font-semibold text-white">{row.entity}</span>;
+                    if (key === 'score') return <StatusBadge tone={row.severity}>{row.score}</StatusBadge>;
+                    if (key === 'type') return row.source;
+                    if (key === 'signal') return row.eventType;
+                    return row[key];
+                  }}
+                />
+              </Card>
+            </>
+          )}
         </PageContainer>
       </Layout>
     </RequireAuth>
