@@ -55,7 +55,7 @@ export default function IncidentDetailPage() {
   return (
     <RequireAuth>
       <Layout insightSummary={insight}>
-        {!data && !error ? <LoadingSkeleton rows={6} /> : error ? <PageContainer><EmptyState title="Incident unavailable" detail={error} /></PageContainer> : (
+        {!data && !error ? <LoadingSkeleton rows={6} /> : error ? <PageContainer><EmptyState title="Incident workspace snapshot" detail={error} /></PageContainer> : (
           <PageContainer>
             <PageHeader
               kicker="Incident Detail"

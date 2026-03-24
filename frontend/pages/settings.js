@@ -36,7 +36,7 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <RequireAuth>
+    <RequireAuth adminOnly>
       <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
@@ -45,7 +45,7 @@ export default function SettingsPage() {
             description="Operator preferences and platform status. Administrators see additional governance controls in the same Stitch layout."
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Settings unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="System settings snapshot" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Profile" title={session.username || 'secure.operator'} description={`Role: ${session.role}`} />

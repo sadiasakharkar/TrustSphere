@@ -1,9 +1,11 @@
 import { envelopeTimestamp, unwrapApiEnvelope } from './contracts';
+import { isDemoModeEnabled, resolveDemoFallback } from './demoFallbacks';
 
 const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
 const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_TRUSTSPHERE_API_KEY || 'trustsphere-local-dev-key';
 const DEFAULT_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 12000);
 const DEFAULT_RETRIES = 1;
+const DEMO_MODE = isDemoModeEnabled();
 
 function resolveBaseUrl() {
   return DEFAULT_BASE_URL.replace(/\/+$/, '');
@@ -50,8 +52,32 @@ async function parseJson(response) {
  * @param {RequestInit & { timeoutMs?: number, retries?: number }} [options]
  * @returns {Promise<{data:any, meta:any, raw:any}>}
  */
+function buildFallbackResult(path, method, fallbackData, error) {
+  const resolved = typeof fallbackData === 'function' ? fallbackData() : fallbackData ?? resolveDemoFallback(path, method);
+  if (resolved == null) return null;
+  return {
+    data: resolved,
+    meta: {
+      timestamp: new Date().toISOString(),
+      fallback: true,
+      demoMode: DEMO_MODE,
+      error: error?.message || null,
+    },
+    raw: {
+      success: true,
+      data: resolved,
+      meta: {
+        timestamp: new Date().toISOString(),
+        fallback: true,
+        demoMode: DEMO_MODE,
+      },
+      error: null,
+    },
+  };
+}
+
 export async function apiRequest(path, options = {}) {
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, retries = DEFAULT_RETRIES, ...requestInit } = options;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, retries = DEFAULT_RETRIES, fallbackData = null, ...requestInit } = options;
   const method = (requestInit.method || 'GET').toUpperCase();
   const url = `${resolveBaseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
 
@@ -68,12 +94,14 @@ export async function apiRequest(path, options = {}) {
       clearTimeout(timeout);
       const raw = await parseJson(response);
 
-      if (!response.ok) {
+      if (!response.ok || raw?.success === false) {
         const errorMessage = raw?.error || `Request failed with status ${response.status}`;
         if (shouldRetry(response.status, method, attempt)) {
           await sleep(250 * (attempt + 1));
           continue;
         }
+        const fallback = buildFallbackResult(path, method, fallbackData, new Error(errorMessage));
+        if (fallback && DEMO_MODE) return fallback;
         const error = new Error(errorMessage);
         error.status = response.status;
         error.meta = raw?.meta || {};
@@ -89,6 +117,8 @@ export async function apiRequest(path, options = {}) {
         await sleep(250 * (attempt + 1));
         continue;
       }
+      const fallback = buildFallbackResult(path, method, fallbackData, error);
+      if (fallback && DEMO_MODE) return fallback;
       if (isAbort) {
         throw new Error(`Request timed out after ${timeoutMs}ms`);
       }
@@ -101,4 +131,8 @@ export async function apiRequest(path, options = {}) {
 
 export function getApiBaseUrl() {
   return resolveBaseUrl();
+}
+
+export function isDemoMode() {
+  return DEMO_MODE;
 }

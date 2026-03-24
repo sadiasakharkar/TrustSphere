@@ -7,10 +7,10 @@ export default function LoginPage() {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Analyst');
+  const [role, setRole] = useState('analyst');
 
   useEffect(() => {
-    if (router.query.role === 'Admin') setRole('Admin');
+    if (String(router.query.role || '').toLowerCase() === 'admin') setRole('admin');
   }, [router.query.role]);
 
   const handleSubmit = (event) => {
@@ -48,8 +48,8 @@ export default function LoginPage() {
             <div>
               <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Access role</label>
               <select className="soc-input" value={role} onChange={(event) => setRole(event.target.value)}>
-                <option>Analyst</option>
-                <option>Admin</option>
+                <option value="analyst">Analyst</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
             <div>

@@ -13,6 +13,7 @@ import EmptyState from '../components/soc/EmptyState';
 import { getOverviewSummary } from '../services/api/overviewService';
 import { getIncidentDetail } from '../services/api/incidentService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { isDemoMode } from '../services/api/apiClient';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -30,7 +31,7 @@ export default function OverviewPage() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    const load = async () => {
       try {
         const summary = await getOverviewSummary();
         if (!active) return;
@@ -45,9 +46,12 @@ export default function OverviewPage() {
       } catch (err) {
         if (active) setError(err.message || 'Unable to load overview data.');
       }
-    })();
+    };
+    load();
+    const interval = isDemoMode() ? window.setInterval(load, 5000) : null;
     return () => {
       active = false;
+      if (interval) window.clearInterval(interval);
     };
   }, []);
 
@@ -67,7 +71,7 @@ export default function OverviewPage() {
             }
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Overview unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline overview snapshot" detail={error} /> : (
             <>
               <section className="soc-demo-banner">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

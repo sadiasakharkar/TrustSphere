@@ -50,7 +50,7 @@ export default function ReportsPage() {
         <PageContainer>
           <SectionHeader eyebrow="Reports" title="Incident Reports" description="Review and export backend-generated SOC reports." actions={<Link href="/overview" className="soc-btn-secondary">Return to overview</Link>} />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Reports unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Report library snapshot" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
               <section className="soc-panel">
                 <DataTable

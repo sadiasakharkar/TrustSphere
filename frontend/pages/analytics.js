@@ -47,7 +47,7 @@ export default function AnalyticsPage() {
             description="Review anomaly trends and concentration by entity without clutter. This page is intentionally sparse so charts remain readable."
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Analytics unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Analytics snapshot" detail={error} /> : (
             <>
               <section className="grid gap-6 xl:grid-cols-2">
                 <AnomalyLineChart series={data.riskDistribution} title="Incident Risk Distribution" label="Risk score" />

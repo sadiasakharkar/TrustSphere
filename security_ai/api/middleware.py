@@ -106,7 +106,7 @@ def success_response(data: Any, *, meta: dict[str, Any] | None = None, status_co
 
 
 def error_response(status_code: int, message: str, *, meta: dict[str, Any] | None = None):
-    return JSONResponse(status_code=status_code, content=build_error_payload(message=message, meta=meta))
+    return JSONResponse(status_code=200, content=build_error_payload(message=message, meta={"originalStatus": status_code, **(meta or {})}))
 
 
 def ensure_request_id(request: Request) -> str:

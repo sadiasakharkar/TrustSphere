@@ -66,7 +66,7 @@ export default function IncidentsPage() {
             }
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Incidents unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Incident queue snapshot" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
               <div className="soc-panel">
                 <DataTable

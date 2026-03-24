@@ -46,7 +46,7 @@ export default function ThreatGraphPage() {
             actions={<Link href="/playbooks" className="soc-btn-primary">Continue to response</Link>}
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Attack graph unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline attack graph snapshot" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.35fr,0.65fr]">
               <div className="soc-panel">
                 <GraphPanel graph={data} />

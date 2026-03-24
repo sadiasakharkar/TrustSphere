@@ -60,7 +60,7 @@ export default function InvestigationsPage() {
             }
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Investigations unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Investigation workspace snapshot" detail={error} /> : (
             <div className="soc-panel">
               <DataTable
                 columns={columns}

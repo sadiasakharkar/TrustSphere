@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose }) {
   const router = useRouter();
   const { session } = useAuth();
+  const visibleNavigation = socNavigation.filter((item) => !item.allowedRoles || item.allowedRoles.includes(session.role));
 
   return (
     <>
@@ -34,15 +35,15 @@ export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose })
             {!collapsed ? (
               <>
                 <p className="mt-2 text-sm font-semibold text-white">{session.username || 'secure.operator'}</p>
-                <p className="mt-1 text-xs soc-text-muted">{session.role}</p>
+                <p className="mt-1 text-xs soc-text-muted">{session.role === 'admin' ? 'Admin' : 'Analyst'}</p>
               </>
-            ) : <p className="mt-2 text-xs font-semibold text-white">{session.role?.slice(0,1)}</p>}
+            ) : <p className="mt-2 text-xs font-semibold text-white">{session.role?.slice(0,1)?.toUpperCase()}</p>}
           </div>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3">
-          {socNavigation.map((item) => {
-            const active = router.pathname === item.href;
+          {visibleNavigation.map((item) => {
+            const active = router.pathname === item.href || (item.href === '/triage' && router.pathname === '/incidents') || (item.href === '/response' && router.pathname === '/playbooks') || (item.href === '/administration' && router.pathname === '/settings');
             return (
               <Link key={item.href} href={item.href} className={`soc-nav-link ${active ? 'soc-nav-link-active' : ''}`} onClick={onClose}>
                 <span className="soc-nav-icon material-symbols-outlined">{item.icon}</span>

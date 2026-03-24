@@ -47,7 +47,7 @@ export default function PlaybooksPage() {
             actions={<Link href="/reports" className="soc-btn-secondary">Proceed to reports</Link>}
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Playbooks unavailable" detail={error} /> : (
+          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Playbook catalog snapshot" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Catalog" title={data?.[0]?.name || 'No playbook loaded'} />

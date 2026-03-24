@@ -12,6 +12,7 @@ import { getMonitoringFeed } from '../services/api/incidentService';
 import { getDetectionsOverview } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
 import { getSocMetrics } from '../services/api/overview.service';
+import { isDemoMode } from '../services/api/apiClient';
 
 const eventColumns = [
   { key: 'timestamp', label: 'Time' },
@@ -30,7 +31,7 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    const load = async () => {
       try {
         const [eventResponse, detectionResponse, metricsResponse] = await Promise.all([
           getMonitoringFeed(),
@@ -46,9 +47,12 @@ export default function MonitoringPage() {
       } catch (err) {
         if (active) setError(err.message || 'Unable to load monitoring feed.');
       }
-    })();
+    };
+    load();
+    const interval = isDemoMode() ? window.setInterval(load, 5000) : null;
     return () => {
       active = false;
+      if (interval) window.clearInterval(interval);
     };
   }, []);
 
@@ -63,7 +67,7 @@ export default function MonitoringPage() {
             actions={<Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
           />
 
-          {!events && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Monitoring unavailable" detail={error} /> : (
+          {!events && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline monitoring feed" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Events" title="Live event feed" description="Recent high-signal telemetry from the backend event stream." />

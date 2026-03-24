@@ -185,6 +185,70 @@ class SOCService:
     def get_admin_users(self) -> list[dict[str, Any]]:
         return deepcopy(self._users)
 
+    def overview_mock(self) -> dict[str, Any]:
+        return self.get_overview_summary()
+
+    def incidents_mock(self) -> list[dict[str, Any]]:
+        return self.list_incidents()
+
+    def incident_detail_mock(self, incident_id: str | None = None) -> dict[str, Any]:
+        if incident_id:
+            incident = self.get_incident(incident_id)
+            if incident is not None:
+                return incident
+        first = self.list_incidents()[0]["id"] if self.list_incidents() else None
+        return self.get_incident(first) if first else {
+            "summary": {"id": "INC-DEMO", "title": "Demo incident", "severity": "Medium", "confidence": "0.70", "status": "Open", "owner": "Unassigned", "users": [], "hosts": [], "mitre": []},
+            "timeline": [],
+            "evidence": [],
+            "relatedAlerts": [],
+        }
+
+    def events_mock(self) -> list[dict[str, Any]]:
+        return self.get_live_events()
+
+    def graph_mock(self, incident_id: str | None = None) -> dict[str, Any]:
+        return self.get_attack_graph(incident_id=incident_id)
+
+    def reports_mock(self) -> list[dict[str, Any]]:
+        return self.list_reports()
+
+    def models_health_mock(self) -> list[dict[str, Any]]:
+        return self.get_detection_feed()
+
+    def detections_mock(self) -> list[dict[str, Any]]:
+        return self.get_detection_feed()
+
+    def investigations_mock(self, entity_id: str = "acct-payroll-09") -> dict[str, Any]:
+        return self.get_investigation_entity(entity_id)
+
+    def administration_mock(self) -> dict[str, Any]:
+        return {
+            "system": self.get_admin_system(),
+            "users": self.get_admin_users(),
+        }
+
+    def detector_result_mock(self, detector: str) -> dict[str, Any]:
+        base = {
+            "email": {"phishing_probability": 0.82, "label": "phishing"},
+            "url": {"phishing_probability": 0.91, "label": "phishing", "url": "http://example.test"},
+            "credential": {"risk_score": 84, "matches": ["AKIAIOSFODNN7EXAMPLE"], "label": "credential_exposed"},
+            "attachment": {"attachment_risk_score": 0.77, "malware_probability": 0.74},
+            "prompt_guard": {"label": "safe", "blocked": False, "risk_score": 0.08},
+        }
+        return deepcopy(base.get(detector, {"label": "safe"}))
+
+    def incident_report_mock(self) -> dict[str, Any]:
+        incident = self.incident_detail_mock()
+        return {
+            "incident_id": incident["summary"]["id"],
+            "title": incident["summary"]["title"],
+            "severity": incident["summary"]["severity"],
+            "confidence": incident["summary"]["confidence"],
+            "executive_summary": "Credential misuse and privileged movement require containment and evidence preservation.",
+            "recommended_actions": ["Contain impacted accounts", "Review graph pivots", "Prepare response playbook"],
+        }
+
     def get_workflow_insight(self, view: str, incident_id: str | None = None) -> dict[str, Any]:
         normalized = view.strip().lower()
         default_incident = self.list_incidents()[0] if self.list_incidents() else None
