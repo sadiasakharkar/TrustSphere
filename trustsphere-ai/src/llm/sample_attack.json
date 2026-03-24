@@ -1,0 +1,96 @@
+{
+  "attack_paths": [
+    {
+      "chain_id": "chain-001",
+      "chain_confidence": 0.88,
+      "events": [
+        {
+          "timestamp": "2026-03-24T09:00:00",
+          "event_type": "phishing_email",
+          "risk_level": "MEDIUM",
+          "user": "finance-x",
+          "host": "laptop-22",
+          "mitre_stage": "TA0001"
+        },
+        {
+          "timestamp": "2026-03-24T09:30:00",
+          "event_type": "login_success_new_ip",
+          "risk_level": "HIGH",
+          "user": "finance-x",
+          "host": "laptop-22",
+          "mitre_stage": "TA0001"
+        },
+        {
+          "timestamp": "2026-03-24T10:00:00",
+          "event_type": "privilege_change",
+          "risk_level": "CRITICAL",
+          "user": "finance-x",
+          "host": "srv-auth-2",
+          "mitre_stage": "TA0004"
+        },
+        {
+          "timestamp": "2026-03-24T10:30:00",
+          "event_type": "data_exfiltration",
+          "risk_level": "CRITICAL",
+          "user": "finance-x",
+          "host": "db-core-1",
+          "mitre_stage": "TA0010"
+        }
+      ],
+      "why_linked": [
+        "Same user shifted activity to a different host within a short interval.",
+        "Anomaly score increased across a continuous user activity chain."
+      ],
+      "risk_reason": [
+        "Potential privilege escalation sequence detected.",
+        "Rapid IP switching may represent lateral movement or impossible travel."
+      ],
+      "mitre_stage": ["TA0001", "TA0004", "TA0010"]
+    }
+  ],
+  "graph_risk_scores": {
+    "critical_chains": 1,
+    "chain_scores": [
+      {
+        "chain_id": "chain-001",
+        "severity_score": 91.4,
+        "severity_level": "CRITICAL"
+      }
+    ],
+    "node_scores": [
+      {
+        "event_id": "evt-000004",
+        "event_type": "login_success_new_ip",
+        "node_risk": 78.2
+      },
+      {
+        "event_id": "evt-000005",
+        "event_type": "privilege_change",
+        "node_risk": 92.8
+      }
+    ]
+  },
+  "mitre_mapping": [
+    {
+      "event_id": "evt-000004",
+      "event_type": "login_success_new_ip",
+      "mitre_tactic": "Initial Access",
+      "mitre_technique": "Valid Accounts (T1078)",
+      "mitre_stage": "TA0001"
+    },
+    {
+      "event_id": "evt-000005",
+      "event_type": "privilege_change",
+      "mitre_tactic": "Privilege Escalation",
+      "mitre_technique": "Additional Cloud Roles (T1098.003)",
+      "mitre_stage": "TA0004"
+    },
+    {
+      "event_id": "evt-000008",
+      "event_type": "data_exfiltration",
+      "mitre_tactic": "Exfiltration",
+      "mitre_technique": "Exfiltration Over Web Service (T1567)",
+      "mitre_stage": "TA0010"
+    }
+  ]
+}
