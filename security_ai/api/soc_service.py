@@ -175,6 +175,100 @@ class SOCService:
     def get_admin_users(self) -> list[dict[str, Any]]:
         return deepcopy(self._users)
 
+    def get_workflow_insight(self, view: str, incident_id: str | None = None) -> dict[str, Any]:
+        normalized = view.strip().lower()
+        default_incident = self.list_incidents()[0] if self.list_incidents() else None
+        incident = self._incidents.get(incident_id) if incident_id else None
+        incident = incident or default_incident
+
+        insights: dict[str, dict[str, Any]] = {
+            "overview": {
+                "title": "Overview focus",
+                "description": "Use the overview to confirm alert pressure, identify the most urgent incident, and hand off into triage with context intact.",
+                "bullets": [
+                    "Critical payroll and transfer activity currently dominate queue pressure.",
+                    "UEBA, graph, and local SOC reasoning are all available for handoff.",
+                    "Move next into monitoring or incident triage."
+                ],
+            },
+            "monitoring": {
+                "title": "Monitoring focus",
+                "description": "Track event velocity, validate detector posture, and promote correlated activity into incident handling before it fragments.",
+                "bullets": [
+                    "Prioritize repeated credential and privilege signals.",
+                    "High detector precision allows direct triage escalation for top events.",
+                    "Move next into incidents once correlated activity is confirmed."
+                ],
+            },
+            "incidents": {
+                "title": "Triage focus",
+                "description": "Use incident severity, SLA, and risk score together to decide which case should move into deeper investigation first.",
+                "bullets": [
+                    f"Current priority incident: {incident['id']}." if incident else "No priority incident currently selected.",
+                    "Review timeline and MITRE mapping before escalation.",
+                    "Move next into incident detail for evidence-backed decisions."
+                ],
+            },
+            "investigations": {
+                "title": "Investigation focus",
+                "description": "Pivot on suspicious entities, validate supporting evidence, and narrow the likely attacker path before moving to the graph view.",
+                "bullets": [
+                    "Use entity activity frequency to isolate the strongest behavioral signal.",
+                    "Cross-check user and host pivots against attack graph nodes.",
+                    "Move next into the attack graph once the lead entity is confirmed."
+                ],
+            },
+            "threat-graph": {
+                "title": "Graph focus",
+                "description": "Use the graph to confirm attacker movement, identify pivots, and determine whether containment should target accounts, hosts, or egress paths.",
+                "bullets": [
+                    "Critical chains currently converge on privileged identity and exfiltration nodes.",
+                    "Sequence validation should precede playbook execution.",
+                    "Move next into playbooks after chain confidence is confirmed."
+                ],
+            },
+            "playbooks": {
+                "title": "Response focus",
+                "description": "Prepare containment and recovery steps only after evidence, timeline, and graph path are consistent with the selected incident.",
+                "bullets": [
+                    f"Primary response target: {incident['title']}." if incident else "Primary response target not selected.",
+                    "Contain privileged access before restoring service workflows.",
+                    "Move next into reports once execution is ready for analyst handoff."
+                ],
+            },
+            "reports": {
+                "title": "Reporting focus",
+                "description": "Use reports to convert investigation evidence and response actions into a concise analyst handoff and executive summary.",
+                "bullets": [
+                    "Export the latest report after playbook preparation is complete.",
+                    "Preserve incident severity and confidence in the handoff summary.",
+                    "Return to overview after artifacts are ready."
+                ],
+            },
+            "settings": {
+                "title": "Administration focus",
+                "description": "Review operator status, backend services, and user readiness without breaking the main SOC investigation flow.",
+                "bullets": [
+                    "Use this page to verify backend health before demos.",
+                    "Administration should not interrupt active incident work.",
+                    "Return to overview after system validation."
+                ],
+            },
+        }
+
+        if normalized == "incident-detail" and incident:
+            return {
+                "title": "Incident detail focus",
+                "description": f"Validate {incident['id']} against timeline, evidence, and graph correlation before executing containment.",
+                "bullets": [
+                    "Confirm initiating access signal before escalation.",
+                    "Check privileged asset exposure in the graph path.",
+                    "Move next into investigation or playbook execution depending on evidence confidence."
+                ],
+            }
+
+        return deepcopy(insights.get(normalized, insights["overview"]))
+
     def _build_incidents(self) -> dict[str, dict[str, Any]]:
         rows = [
             {

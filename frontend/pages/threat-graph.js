@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
@@ -8,9 +9,11 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import { getThreatGraph } from '../services/api/graphService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 export default function ThreatGraphPage() {
   const [data, setData] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -18,7 +21,11 @@ export default function ThreatGraphPage() {
     (async () => {
       try {
         const graph = await getThreatGraph();
-        if (active) setData(graph);
+        if (active) {
+          setData(graph);
+          const workflow = await getWorkflowInsight('threat-graph');
+          if (active) setInsight(workflow);
+        }
       } catch (err) {
         if (active) setError(err.message || 'Unable to load attack graph.');
       }
@@ -30,12 +37,13 @@ export default function ThreatGraphPage() {
 
   return (
     <RequireAuth>
-      <Layout>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Attack Graph"
             title="Attack Path Visualization"
             description="Trace attacker movement through a centered graph view and validate chain severity using the supporting context panel."
+            actions={<Link href="/playbooks" className="soc-btn-primary">Continue to response</Link>}
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Attack graph unavailable" detail={error} /> : (

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import GraphPanel from '../../components/soc/GraphPanel';
@@ -16,12 +17,14 @@ import TimelineRail from '../../components/soc/TimelineRail';
 import { getIncidentDetail } from '../../services/api/incidentService';
 import { getThreatGraph } from '../../services/api/graphService';
 import { getPlaybooks } from '../../services/api/detectionService';
+import { getIncidentInsight } from '../../services/api/insight.service';
 
 export default function IncidentDetailPage() {
   const router = useRouter();
   const [data, setData] = useState(null);
   const [graph, setGraph] = useState(null);
   const [playbooks, setPlaybooks] = useState([]);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -38,6 +41,8 @@ export default function IncidentDetailPage() {
         setData(incident);
         setGraph(incidentGraph);
         setPlaybooks(availablePlaybooks?.playbooks || []);
+        const summary = await getIncidentInsight(router.query.id);
+        if (active) setInsight(summary);
       } catch (err) {
         if (active) setError(err.message || 'Unable to load incident workspace.');
       }
@@ -49,20 +54,22 @@ export default function IncidentDetailPage() {
 
   return (
     <RequireAuth>
-      <Layout
-        insightSummary={{
-          title: 'Incident detail focus',
-          description: 'Validate timeline, evidence, affected entities, and graph sequence before approving containment or resolution.',
-          bullets: [
-            'Confirm initiating access signal before escalation.',
-            'Check privileged asset exposure in the graph path.',
-            'Use evidence stack to support response decisions.'
-          ]
-        }}
-      >
+      <Layout insightSummary={insight}>
         {!data && !error ? <LoadingSkeleton rows={6} /> : error ? <PageContainer><EmptyState title="Incident unavailable" detail={error} /></PageContainer> : (
           <PageContainer>
-            <PageHeader kicker="Incident Detail" title={data.summary.title} description="This incident workspace consolidates UEBA, graph, and reasoning context so analysts can move from triage into evidence-backed response." actions={<SeverityBadge level={data.summary.severity}>{data.summary.severity}</SeverityBadge>} />
+            <PageHeader
+              kicker="Incident Detail"
+              title={data.summary.title}
+              description="This incident workspace consolidates UEBA, graph, and reasoning context so analysts can move from triage into evidence-backed response."
+              actions={
+                <div className="flex flex-wrap items-center gap-3">
+                  <SeverityBadge level={data.summary.severity}>{data.summary.severity}</SeverityBadge>
+                  <Link href="/investigations" className="soc-btn-secondary">Investigate</Link>
+                  <Link href="/threat-graph" className="soc-btn-secondary">Attack graph</Link>
+                  <Link href="/playbooks" className="soc-btn-primary">Run playbook</Link>
+                </div>
+              }
+            />
             <section className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
               <div className="soc-panel">
                 <div className="flex flex-wrap items-center gap-3">

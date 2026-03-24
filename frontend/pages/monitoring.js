@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
@@ -9,6 +10,7 @@ import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import { getMonitoringFeed } from '../services/api/incidentService';
 import { getDetectionsOverview } from '../services/api/detectionService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 const eventColumns = [
   { key: 'timestamp', label: 'Time' },
@@ -21,6 +23,7 @@ const eventColumns = [
 export default function MonitoringPage() {
   const [events, setEvents] = useState(null);
   const [detectors, setDetectors] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -34,6 +37,8 @@ export default function MonitoringPage() {
         if (!active) return;
         setEvents(eventResponse.events);
         setDetectors(detectionResponse.detectors);
+        const workflow = await getWorkflowInsight('monitoring');
+        if (active) setInsight(workflow);
       } catch (err) {
         if (active) setError(err.message || 'Unable to load monitoring feed.');
       }
@@ -45,12 +50,13 @@ export default function MonitoringPage() {
 
   return (
     <RequireAuth>
-      <Layout insightSummary={{ title: 'Monitoring focus', description: 'Track event velocity, detector health, and severity concentration before promoting activity into incident handling.' }}>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Monitoring"
             title="Live Security Monitoring"
             description="Review the latest security events and detector posture using backend-driven telemetry."
+            actions={<Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
           />
 
           {!events && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Monitoring unavailable" detail={error} /> : (

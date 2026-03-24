@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
@@ -11,6 +12,7 @@ import TimelinePanel from '../components/soc/TimelinePanel';
 import EmptyState from '../components/soc/EmptyState';
 import { getOverviewSummary } from '../services/api/overviewService';
 import { getIncidentDetail } from '../services/api/incidentService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -23,6 +25,7 @@ const columns = [
 export default function OverviewPage() {
   const [data, setData] = useState(null);
   const [focusIncident, setFocusIncident] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -32,6 +35,8 @@ export default function OverviewPage() {
         const summary = await getOverviewSummary();
         if (!active) return;
         setData(summary);
+        const overviewInsight = await getWorkflowInsight('overview');
+        if (active) setInsight(overviewInsight);
         const primary = summary?.criticalQueue?.[0]?.id;
         if (primary) {
           const detail = await getIncidentDetail(primary);
@@ -48,13 +53,18 @@ export default function OverviewPage() {
 
   return (
     <RequireAuth>
-      <Layout>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Overview"
             title="Security Operations Overview"
             description="Start here to assess current alert pressure, incident severity, and investigation tempo before moving into incident handling."
-            actions={<button className="soc-btn-secondary">Last 24h</button>}
+            actions={
+              <>
+                <button className="soc-btn-secondary">Last 24h</button>
+                <Link href="/monitoring" className="soc-btn-primary">Open monitoring</Link>
+              </>
+            }
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Overview unavailable" detail={error} /> : (

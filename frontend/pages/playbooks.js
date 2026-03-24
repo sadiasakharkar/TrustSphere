@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
@@ -8,10 +9,12 @@ import PlaybookChecklist from '../components/soc/PlaybookChecklist';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import { getPlaybooks, runPlaybook } from '../services/api/detectionService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 export default function PlaybooksPage() {
   const [data, setData] = useState(null);
   const [execution, setExecution] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -19,7 +22,11 @@ export default function PlaybooksPage() {
     (async () => {
       try {
         const response = await getPlaybooks();
-        if (active) setData(response.playbooks || []);
+        if (active) {
+          setData(response.playbooks || []);
+          const workflow = await getWorkflowInsight('playbooks');
+          if (active) setInsight(workflow);
+        }
       } catch (err) {
         if (active) setError(err.message || 'Unable to load playbooks.');
       }
@@ -31,12 +38,13 @@ export default function PlaybooksPage() {
 
   return (
     <RequireAuth>
-      <Layout insightSummary={{ title: 'Playbook execution', description: 'Use backend-generated response steps to move from confirmed incident evidence into containment and recovery.' }}>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Playbooks"
             title="Response Playbooks"
             description="Review and prepare the current SOC response plan."
+            actions={<Link href="/reports" className="soc-btn-secondary">Proceed to reports</Link>}
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Playbooks unavailable" detail={error} /> : (

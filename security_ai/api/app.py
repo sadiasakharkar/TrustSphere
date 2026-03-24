@@ -405,5 +405,13 @@ if FastAPI is not None:
     async def admin_users():
         rows = soc_service.get_admin_users()
         return success_response(rows, meta={"count": len(rows)})
+
+    @app.get("/api/insights/workflow/{view}")
+    async def workflow_insight(view: str, incident_id: str | None = None):
+        return success_response(soc_service.get_workflow_insight(view=view, incident_id=incident_id))
+
+    @app.get("/api/insights/incident/{incident_id}")
+    async def incident_insight(incident_id: str):
+        return success_response(soc_service.get_workflow_insight(view="incident-detail", incident_id=incident_id))
 else:
     app = None

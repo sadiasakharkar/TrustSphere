@@ -8,9 +8,11 @@ import SectionHeader from '../components/soc/SectionHeader';
 import StatusIndicator from '../components/soc/StatusIndicator';
 import { useAuth } from '../context/AuthContext';
 import { getAdministrationWorkspace } from '../services/api/detectionService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 export default function SettingsPage() {
   const [data, setData] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
   const { isAdmin, session } = useAuth();
 
@@ -19,7 +21,11 @@ export default function SettingsPage() {
     (async () => {
       try {
         const workspace = await getAdministrationWorkspace();
-        if (active) setData(workspace);
+        if (active) {
+          setData(workspace);
+          const workflow = await getWorkflowInsight('settings');
+          if (active) setInsight(workflow);
+        }
       } catch (err) {
         if (active) setError(err.message || 'Unable to load administration data.');
       }
@@ -31,7 +37,7 @@ export default function SettingsPage() {
 
   return (
     <RequireAuth>
-      <Layout>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Settings"

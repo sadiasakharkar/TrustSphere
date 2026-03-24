@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
@@ -8,6 +9,7 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import { getInvestigationWorkspace } from '../services/api/detectionService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 const columns = [
   { key: 'entity', label: 'Entity' },
@@ -19,6 +21,7 @@ const columns = [
 
 export default function InvestigationsPage() {
   const [data, setData] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -26,7 +29,11 @@ export default function InvestigationsPage() {
     (async () => {
       try {
         const workspace = await getInvestigationWorkspace();
-        if (active) setData(workspace);
+        if (active) {
+          setData(workspace);
+          const workflow = await getWorkflowInsight('investigations');
+          if (active) setInsight(workflow);
+        }
       } catch (err) {
         if (active) setError(err.message || 'Unable to load investigations.');
       }
@@ -38,7 +45,7 @@ export default function InvestigationsPage() {
 
   return (
     <RequireAuth>
-      <Layout>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Investigations"
@@ -48,6 +55,7 @@ export default function InvestigationsPage() {
               <>
                 <button className="soc-btn-secondary">Severity: All</button>
                 <button className="soc-btn-secondary">Type: All</button>
+                <Link href="/threat-graph" className="soc-btn-primary">Open attack graph</Link>
               </>
             }
           />

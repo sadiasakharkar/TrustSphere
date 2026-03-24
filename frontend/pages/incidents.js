@@ -11,6 +11,7 @@ import TimelinePanel from '../components/soc/TimelinePanel';
 import EmptyState from '../components/soc/EmptyState';
 import { getTriageQueue } from '../services/api/incidentService';
 import { getIncidentDetail } from '../services/api/incidentService';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -23,6 +24,7 @@ const columns = [
 export default function IncidentsPage() {
   const [data, setData] = useState(null);
   const [focusIncident, setFocusIncident] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -32,6 +34,8 @@ export default function IncidentsPage() {
         const queue = await getTriageQueue();
         if (!active) return;
         setData(queue);
+        const workflow = await getWorkflowInsight('incidents', queue?.queue?.[0]?.id);
+        if (active) setInsight(workflow);
         const firstId = queue?.queue?.[0]?.id;
         if (firstId) {
           const detail = await getIncidentDetail(firstId);
@@ -48,13 +52,18 @@ export default function IncidentsPage() {
 
   return (
     <RequireAuth>
-      <Layout>
+      <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader
             eyebrow="Incidents"
             title="Incident Triage Queue"
             description="Prioritize incidents by severity and SLA, then pivot into the detailed case view for evidence validation and response decisions."
-            actions={<button className="soc-btn-secondary">Assigned to me</button>}
+            actions={
+              <>
+                <button className="soc-btn-secondary">Assigned to me</button>
+                {focusIncident?.summary?.id ? <Link href={`/incident/${focusIncident.summary.id}`} className="soc-btn-primary">Review top case</Link> : null}
+              </>
+            }
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Incidents unavailable" detail={error} /> : (

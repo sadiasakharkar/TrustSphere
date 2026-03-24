@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
@@ -8,6 +9,7 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import { exportReport, getReportsWorkspace } from '../services/api/report.service';
+import { getWorkflowInsight } from '../services/api/insight.service';
 
 const columns = [
   { key: 'id', label: 'Report' },
@@ -20,6 +22,7 @@ const columns = [
 export default function ReportsPage() {
   const [data, setData] = useState(null);
   const [exportState, setExportState] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -27,7 +30,11 @@ export default function ReportsPage() {
     (async () => {
       try {
         const response = await getReportsWorkspace();
-        if (active) setData(response);
+        if (active) {
+          setData(response);
+          const workflow = await getWorkflowInsight('reports');
+          if (active) setInsight(workflow);
+        }
       } catch (err) {
         if (active) setError(err.message || 'Unable to load reports.');
       }
@@ -39,9 +46,9 @@ export default function ReportsPage() {
 
   return (
     <RequireAuth>
-      <Layout insightSummary={{ title: 'Reporting', description: 'Backend-generated reports and export artifacts are surfaced here for demo-ready analyst handoff.' }}>
+      <Layout insightSummary={insight}>
         <PageContainer>
-          <SectionHeader eyebrow="Reports" title="Incident Reports" description="Review and export backend-generated SOC reports." />
+          <SectionHeader eyebrow="Reports" title="Incident Reports" description="Review and export backend-generated SOC reports." actions={<Link href="/overview" className="soc-btn-secondary">Return to overview</Link>} />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Reports unavailable" detail={error} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
