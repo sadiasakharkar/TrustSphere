@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const AuthContext = createContext(null);
 
 const defaultSession = {
-  username: 'soc.analyst',
+  username: '',
   role: 'Analyst',
   loggedIn: false
 };
@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (parsed?.role && parsed?.username) {
+        if (parsed?.role && typeof parsed?.username === 'string') {
           setSession({ ...parsed, loggedIn: true });
         }
       } catch {
@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = ({ username, role }) => {
-    const next = { username: username || 'soc.user', role: role || 'Analyst', loggedIn: true };
+    const next = { username: username?.trim() || 'secure.operator', role: role || 'Analyst', loggedIn: true };
     setSession(next);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('trustsphere.session', JSON.stringify(next));

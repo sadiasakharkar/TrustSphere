@@ -1,0 +1,27 @@
+export const stitchColors = {
+  background: '#10141a',
+  surface: '#10141a',
+  surfaceContainerLowest: '#0a0e14',
+  surfaceContainerLow: '#181c22',
+  surfaceContainer: '#1c2026',
+  surfaceContainerHigh: '#262a31',
+  surfaceContainerHighest: '#31353c',
+  surfaceBright: '#353940',
+  surfaceVariant: '#31353c',
+  outline: '#8b90a0',
+  outlineVariant: '#414755',
+  onSurface: '#dfe2eb',
+  onSurfaceVariant: '#c1c6d7',
+  primary: '#adc6ff',
+  primaryContainer: '#4b8eff',
+  primaryFixed: '#d8e2ff',
+  primaryFixedDim: '#adc6ff',
+  secondary: '#4ae176',
+  secondaryContainer: '#00b954',
+  tertiary: '#ffb3ad',
+  tertiaryContainer: '#ff5451',
+  error: '#ffb4ab',
+  errorContainer: '#93000a',
+};
+
+export type StitchColorTokens = typeof stitchColors;

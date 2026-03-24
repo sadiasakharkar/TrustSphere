@@ -1,20 +1,33 @@
 module.exports = {
   colors: {
-    bg: '#0D1117',
-    panel: '#161B22',
-    accent: '#00FFFF',
-    secondary: '#4FD1C5',
-    violet: '#7F5AF0',
-    text: '#E6EDF3'
+    bg: '#10141a',
+    panel: '#1c2026',
+    panelLow: '#181c22',
+    panelLowest: '#0a0e14',
+    panelHigh: '#262a31',
+    panelHighest: '#31353c',
+    outline: '#8b90a0',
+    outlineVariant: '#414755',
+    accent: '#adc6ff',
+    accentStrong: '#4b8eff',
+    secondary: '#4ae176',
+    secondaryStrong: '#00b954',
+    tertiary: '#ffb3ad',
+    tertiaryStrong: '#ff5451',
+    text: '#dfe2eb',
+    textMuted: '#c1c6d7',
+    error: '#ffb4ab'
   },
   boxShadow: {
-    card: '0 10px 30px #00000030'
+    card: '0 20px 40px rgba(0,0,0,0.4)',
+    soft: '0 10px 30px rgba(0,0,0,0.3)'
   },
   backgroundImage: {
-    'glow-grid':
-      'radial-gradient(circle at 10% 10%, rgba(0,255,255,0.08), transparent 40%), radial-gradient(circle at 90% 20%, rgba(127,90,240,0.12), transparent 35%), linear-gradient(120deg, rgba(79,209,197,0.08), transparent 35%)'
+    'soc-grid': 'radial-gradient(rgba(28,32,38,0.95) 1px, transparent 1px)'
   },
   fontFamily: {
-    sans: ['Inter', 'system-ui', 'sans-serif']
+    sans: ['Inter', 'system-ui', 'sans-serif'],
+    headline: ['Manrope', 'sans-serif'],
+    body: ['Inter', 'system-ui', 'sans-serif']
   }
 };

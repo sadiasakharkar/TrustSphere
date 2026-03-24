@@ -1,44 +1,54 @@
 import Link from 'next/link';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-bg">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--ts-surface-lowest)]">
       <div className="topology-layer" />
       <div className="floating-orb orb-cyan" />
       <div className="floating-orb orb-violet" />
-
-      <main className="relative mx-auto flex min-h-screen max-w-[1600px] flex-col items-center justify-center px-4 text-center">
-        <p className="mb-4 rounded-full border border-accent/40 bg-accent/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-accent">
-          Autonomous Cyber Incident Response System
-        </p>
-
-        <h1 className="hero-word">TRUSTSPHERE</h1>
-
-        <p className="mt-4 max-w-3xl text-sm text-text/80 md:text-base">
-          AI-native, fully offline cyber defense platform for banking environments with autonomous detection, correlation, playbook generation, and narrative intelligence.
-        </p>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/login" className="btn-primary px-7 py-3">Login</Link>
-          <Link href="/login?role=Admin" className="btn-secondary px-7 py-3">Sign In</Link>
-          <a href="#documentation" className="rounded-lg border border-white/20 bg-panel/70 px-7 py-3 font-semibold text-white transition hover:border-accent/60">
-            Documentation
-          </a>
+      <main className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 py-24">
+        <div className="grid items-center gap-12 lg:grid-cols-[1.1fr,0.9fr]">
+          <section>
+            <p className="soc-kicker">AI Security Platform</p>
+            <h1 className="hero-word mt-4 max-w-5xl">TRUSTSPHERE</h1>
+            <p className="mt-6 max-w-3xl text-base leading-8 soc-text-muted">
+              Enterprise SOC intelligence for banking environments. TrustSphere unifies UEBA, attack graph reconstruction, fraud detectors, and local SOC reasoning inside an offline, explainable security console.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Link href="/login" className="soc-btn-primary">Launch console</Link>
+              <Link href="/overview" className="soc-btn-secondary">View workspace</Link>
+              <a href="#architecture" className="soc-btn-ghost">View architecture</a>
+            </div>
+          </section>
+          <section className="soc-glass p-8 shadow-card">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                ['Unified Incident Flow', 'Monitoring to triage, investigation, response, and reporting in one command surface.'],
+                ['Offline LLM Analyst', 'Local incident intelligence and playbooks with deterministic controls.'],
+                ['Graph-Centric Analysis', 'Correlated attacker movement mapped into investigation-ready chains.'],
+                ['Enterprise Controls', 'Versioned contracts, strict middleware, and production-mode enforcement.']
+              ].map(([title, detail]) => (
+                <div key={title} className="soc-panel-muted">
+                  <p className="text-sm font-semibold text-white">{title}</p>
+                  <p className="mt-2 text-sm leading-6 soc-text-muted">{detail}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
-      </main>
-
-      <section id="documentation" className="relative mx-auto max-w-6xl px-4 pb-20">
-        <div className="glass-panel">
-          <p className="text-xs uppercase tracking-[0.2em] text-secondary">TrustSphere Flow</p>
-          <h2 className="mt-2 text-2xl font-bold text-white">How the platform works in an air-gapped SOC</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-bg/60 p-3 text-sm text-text/85">1. Ingestion: SIEM, EDR, IAM, banking logs collected locally.</div>
-            <div className="rounded-xl border border-white/10 bg-bg/60 p-3 text-sm text-text/85">2. Normalization and feature extraction prepare behavioral vectors.</div>
-            <div className="rounded-xl border border-white/10 bg-bg/60 p-3 text-sm text-text/85">3. AI anomaly and correlation engines build attack-path fidelity.</div>
-            <div className="rounded-xl border border-white/10 bg-bg/60 p-3 text-sm text-text/85">4. Autonomous playbooks and narrative reports support SOC response.</div>
+        <section id="architecture" className="mt-20 soc-panel">
+          <p className="soc-kicker">Pipeline Architecture</p>
+          <h2 className="soc-section-title mt-2">Normalized events to analyst action</h2>
+          <div className="mt-6 grid gap-3 lg:grid-cols-5">
+            {['Normalize', 'Detect', 'Correlate', 'Reason', 'Respond'].map((step, index) => (
+              <div key={step} className="soc-panel-muted">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.55)]">Stage {index + 1}</p>
+                <p className="mt-3 text-sm font-semibold text-white">{step}</p>
+              </div>
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
     </div>
   );
 }

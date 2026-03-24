@@ -12,7 +12,7 @@ export default function RequireAuth({ children, adminOnly = false }) {
       return;
     }
     if (adminOnly && !isAdmin) {
-      router.replace('/dashboard');
+      router.replace('/overview');
     }
   }, [adminOnly, isAdmin, router, session.loggedIn]);
 
