@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "security-api"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["security-api:8000"]
