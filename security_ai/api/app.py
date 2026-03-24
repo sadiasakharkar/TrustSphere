@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 import json
+import logging
 from pathlib import Path
 import sys
 import time
@@ -13,16 +13,31 @@ from pydantic import BaseModel, Field, ValidationError
 
 try:
     from fastapi import FastAPI, HTTPException, Request, Response
+    from fastapi.exceptions import RequestValidationError
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import JSONResponse
 except Exception:
     FastAPI = None
     HTTPException = Exception
+    RequestValidationError = Exception
     Request = object
     Response = object
     CORSMiddleware = object
+    JSONResponse = object
 
 from security_ai.api.model_loader import ModelLoader
 from security_ai.api.services import DetectorService
+from security_ai.api.middleware import (
+    MAX_REQUEST_SIZE_BYTES,
+    REQUEST_ID_HEADER,
+    authenticator,
+    client_identity,
+    ensure_request_id,
+    error_response,
+    rate_limiter,
+    read_json_body,
+    structured_log,
+)
 from security_ai.monitoring.metrics import MetricsSnapshot, REQUEST_COUNTER, REQUEST_LATENCY, metrics_payload, record_model_snapshot
 from security_ai.registry.mlflow_registry import MLflowRegistry
 
@@ -80,51 +95,178 @@ if FastAPI is not None:
 
     @app.middleware("http")
     async def error_handling_middleware(request: Request, call_next):
+        request_id = ensure_request_id(request)
         start = time.perf_counter()
         endpoint = getattr(request, "url", None).path if getattr(request, "url", None) else "unknown"
+        client_id = client_identity(request)
         try:
             response = await call_next(request)
             REQUEST_COUNTER.labels(endpoint, str(getattr(response, "status_code", 200))).inc()
+            response.headers[REQUEST_ID_HEADER] = request_id
+            structured_log(
+                LOGGER,
+                "api_request_completed",
+                request_id=request_id,
+                method=getattr(request, "method", "UNKNOWN"),
+                path=endpoint,
+                client_id=client_id,
+                status_code=getattr(response, "status_code", 200),
+                duration_ms=round((time.perf_counter() - start) * 1000, 2),
+            )
             return response
+        except HTTPException as exc:
+            REQUEST_COUNTER.labels(endpoint, str(getattr(exc, "status_code", 500))).inc()
+            structured_log(
+                LOGGER,
+                "api_request_failed",
+                request_id=request_id,
+                method=getattr(request, "method", "UNKNOWN"),
+                path=endpoint,
+                client_id=client_id,
+                status_code=getattr(exc, "status_code", 500),
+                error=str(getattr(exc, "detail", "Unhandled HTTP exception")),
+                duration_ms=round((time.perf_counter() - start) * 1000, 2),
+            )
+            return error_response(
+                status_code=getattr(exc, "status_code", 500),
+                error_code="http_error",
+                message=str(getattr(exc, "detail", "Unhandled HTTP exception")),
+                request_id=request_id,
+            )
         except Exception as exc:
             LOGGER.exception("Unhandled API error on %s: %s", endpoint, exc)
             REQUEST_COUNTER.labels(endpoint, "500").inc()
-            raise HTTPException(status_code=500, detail="Internal server error")
+            structured_log(
+                LOGGER,
+                "api_request_exception",
+                request_id=request_id,
+                method=getattr(request, "method", "UNKNOWN"),
+                path=endpoint,
+                client_id=client_id,
+                status_code=500,
+                error=str(exc),
+                duration_ms=round((time.perf_counter() - start) * 1000, 2),
+            )
+            return error_response(
+                status_code=500,
+                error_code="internal_error",
+                message="Internal server error",
+                request_id=request_id,
+            )
         finally:
             REQUEST_LATENCY.labels(endpoint).observe(time.perf_counter() - start)
 
     @app.middleware("http")
-    async def schema_validation_middleware(request: Request, call_next):
-        if request.method.upper() != "POST" or getattr(request, "url", None) is None:
+    async def enterprise_security_middleware(request: Request, call_next):
+        if getattr(request, "url", None) is None:
             return await call_next(request)
 
+        request_id = getattr(request.state, "request_id", None) or ensure_request_id(request)
         endpoint = request.url.path
-        if endpoint != "/analyze/incident":
+        client_id = client_identity(request)
+
+        authenticator.validate(request)
+
+        allowed, _, retry_after = rate_limiter.allow(client_id)
+        if not allowed:
+            return error_response(
+                status_code=429,
+                error_code="rate_limit_exceeded",
+                message="Rate limit exceeded.",
+                request_id=request_id,
+                details={"retry_after_seconds": retry_after},
+            )
+
+        if request.method.upper() != "POST":
             return await call_next(request)
+
+        declared_size = int(request.headers.get("content-length", "0") or 0)
+        if declared_size > MAX_REQUEST_SIZE_BYTES:
+            return error_response(
+                status_code=413,
+                error_code="request_too_large",
+                message=f"Request body exceeds {MAX_REQUEST_SIZE_BYTES} bytes.",
+                request_id=request_id,
+            )
 
         body = await request.body()
         if not body:
-            raise HTTPException(status_code=422, detail="Request body is required.")
-        try:
-            payload = json.loads(body.decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise HTTPException(status_code=422, detail=f"Invalid JSON payload: {exc.msg}") from exc
-
-        if payload.get("schema_version") != INCIDENT_SCHEMA_VERSION:
-            raise HTTPException(
+            return error_response(
                 status_code=422,
-                detail=f"Unsupported schema_version for /analyze/incident. Expected {INCIDENT_SCHEMA_VERSION}.",
+                error_code="empty_body",
+                message="Request body is required.",
+                request_id=request_id,
+            )
+        if len(body) > MAX_REQUEST_SIZE_BYTES:
+            return error_response(
+                status_code=413,
+                error_code="request_too_large",
+                message=f"Request body exceeds {MAX_REQUEST_SIZE_BYTES} bytes.",
+                request_id=request_id,
             )
         try:
-            IncidentAnalysisRequest.model_validate(payload)
-        except ValidationError as exc:
-            raise HTTPException(status_code=422, detail=exc.errors()) from exc
+            payload = read_json_body(body)
+        except json.JSONDecodeError as exc:
+            return error_response(
+                status_code=422,
+                error_code="invalid_json",
+                message=f"Invalid JSON payload: {exc.msg}",
+                request_id=request_id,
+            )
+
+        if endpoint == "/analyze/incident":
+            if payload.get("schema_version") != INCIDENT_SCHEMA_VERSION:
+                return error_response(
+                    status_code=422,
+                    error_code="invalid_schema_version",
+                    message=f"Unsupported schema_version for /analyze/incident. Expected {INCIDENT_SCHEMA_VERSION}.",
+                    request_id=request_id,
+                )
+            try:
+                IncidentAnalysisRequest.model_validate(payload)
+            except ValidationError as exc:
+                return error_response(
+                    status_code=422,
+                    error_code="schema_validation_failed",
+                    message="Incident request schema validation failed.",
+                    request_id=request_id,
+                    details=exc.errors(),
+                )
 
         async def receive() -> dict[str, Any]:
             return {"type": "http.request", "body": body, "more_body": False}
 
         request._receive = receive
         return await call_next(request)
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+        return error_response(
+            status_code=422,
+            error_code="request_validation_failed",
+            message="Request validation failed.",
+            request_id=getattr(request.state, "request_id", None),
+            details=exc.errors(),
+        )
+
+    @app.exception_handler(ValidationError)
+    async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
+        return error_response(
+            status_code=422,
+            error_code="validation_failed",
+            message="Validation failed.",
+            request_id=getattr(request.state, "request_id", None),
+            details=exc.errors(),
+        )
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        return error_response(
+            status_code=getattr(exc, "status_code", 500),
+            error_code="http_exception",
+            message=str(getattr(exc, "detail", "HTTP exception")),
+            request_id=getattr(request.state, "request_id", None),
+        )
 
     @app.on_event("startup")
     async def startup_event() -> None:
