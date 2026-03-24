@@ -30,6 +30,8 @@ export async function getAdministrationWorkspace() {
       { label: 'Kafka', value: system.kafka },
       { label: 'Ollama', value: system.ollama }
     ],
+    modelHealth: Array.isArray(system.modelHealth) ? system.modelHealth : [],
+    systemConfig: system.systemConfig || {},
     users: users.users,
     auditLogs: [
       {

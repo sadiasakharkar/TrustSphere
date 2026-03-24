@@ -181,19 +181,10 @@ export function resolveDemoFallback(path, method = 'GET') {
   if (cleanPath === '/api/admin/system') return adminSystemData();
   if (cleanPath === '/api/admin/users') return adminUsersData();
   if (cleanPath.startsWith('/api/insights/workflow/')) {
-    const view = decodeURIComponent(cleanPath.split('/').pop() || 'overview');
-    return {
-      title: `${view.replace(/-/g, ' ')} focus`,
-      description: 'Demo mode is supplying a stable analyst summary so the workspace remains usable offline.',
-      bullets: ['Continue through the analyst workflow.', 'Use seeded incidents to demonstrate end-to-end handling.'],
-    };
+    return null;
   }
   if (cleanPath.startsWith('/api/insights/incident/')) {
-    return {
-      title: 'Incident detail focus',
-      description: 'Use timeline, graph context, and response playbooks to walk the demo scenario end to end.',
-      bullets: ['Validate evidence.', 'Review graph pivots.', 'Prepare playbook execution.'],
-    };
+    return null;
   }
   if (cleanPath === '/health') {
     return { status: 'ok', service: 'trustsphere-security-platform', async_inference: true, offline_capable: true };

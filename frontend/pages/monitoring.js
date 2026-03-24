@@ -67,7 +67,23 @@ export default function MonitoringPage() {
           />
 
           {!events && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline monitoring feed" detail={error} /> : (
-            <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+            <div className="space-y-6">
+              <section className="grid gap-4 md:grid-cols-3">
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Live events</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{events?.length || 0}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Active detectors</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{detectors?.length || 0}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Critical volume</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{metrics?.severityDistribution?.Critical || 0}</p>
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Events" title="Live event feed" description="Recent high-signal telemetry from the backend event stream." />
                 {metrics?.spikeSummary ? (
@@ -110,6 +126,7 @@ export default function MonitoringPage() {
                   ))}
                 </div>
               </section>
+              </div>
             </div>
           )}
         </PageContainer>

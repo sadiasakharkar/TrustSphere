@@ -21,6 +21,12 @@ const columns = [
   { key: 'severity', label: 'Severity' },
   { key: 'riskScore', label: 'Risk' }
 ];
+const activityColumns = [
+  { key: 'timestamp', label: 'Time' },
+  { key: 'entity', label: 'Entity' },
+  { key: 'eventType', label: 'Activity' },
+  { key: 'severity', label: 'Severity' }
+];
 
 export default function OverviewPage() {
   const [data, setData] = useState(null);
@@ -141,6 +147,35 @@ export default function OverviewPage() {
                       <div key={item.title} className="soc-panel-muted">
                         <p className="text-sm font-semibold text-white">{item.title}</p>
                         <p className="mt-2 text-sm leading-6 soc-text-muted">{item.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
+                <div className="soc-panel">
+                  <SectionHeader eyebrow="Recent Activity" title="Latest correlated events" description="Backend-fed activity associated with the current risk spike." />
+                  <div className="mt-4">
+                    <DataTable
+                      columns={activityColumns}
+                      rows={data.analytics?.recentActivity || []}
+                      getRowKey={(row) => row.id}
+                      renderCell={(row, key) => {
+                        if (key === 'severity') return <StatusBadge tone={row.severity}>{row.severity}</StatusBadge>;
+                        return row[key];
+                      }}
+                      emptyMessage="No recent activity in the current window."
+                    />
+                  </div>
+                </div>
+                <div className="soc-panel">
+                  <SectionHeader eyebrow="Distribution" title="Severity posture" description="Current severity balance from the active backend event window." />
+                  <div className="mt-4 space-y-3">
+                    {Object.entries(data.analytics?.severityDistribution || {}).map(([label, value]) => (
+                      <div key={label} className="soc-panel-muted flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-white">{label}</p>
+                        <StatusBadge tone={label}>{value}</StatusBadge>
                       </div>
                     ))}
                   </div>

@@ -63,6 +63,12 @@ export default function PlaybooksPage() {
                     Prepare execution
                   </button>
                 </div>
+                {execution ? (
+                  <div className="mt-4 soc-panel-muted">
+                    <p className="text-sm font-semibold text-white">{execution.incidentTitle}</p>
+                    <p className="mt-2 text-sm leading-6 soc-text-muted">Execution state: {execution.executionStatus}. Started at {execution.startedAt}.</p>
+                  </div>
+                ) : null}
               </section>
               <section className="soc-panel">
                 <SectionHeader eyebrow="Steps" title="Recommended response sequence" />

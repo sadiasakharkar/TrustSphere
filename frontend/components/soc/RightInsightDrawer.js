@@ -17,6 +17,10 @@ function normalizeSummary(summary) {
 export default function RightInsightDrawer({ summary }) {
   const normalized = normalizeSummary(summary);
   if (!normalized) return null;
+  const isGenericDemoText =
+    String(normalized.description || '').includes('Demo mode is supplying a stable analyst summary') ||
+    (normalized.title || '').toLowerCase().endsWith('focus');
+  if (isGenericDemoText && !normalized.bullets.length) return null;
 
   return (
     <aside className="soc-insight-drawer">

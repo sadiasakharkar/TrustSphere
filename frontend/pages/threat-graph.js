@@ -50,7 +50,23 @@ export default function ThreatGraphPage() {
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline attack graph snapshot" detail={error} /> : (
-            <div className="grid gap-6 xl:grid-cols-[1.35fr,0.65fr]">
+            <div className="space-y-6">
+              <section className="grid gap-4 md:grid-cols-3">
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Nodes</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.nodes?.length || 0}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Edges</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.edges?.length || 0}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Chains</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.chains?.length || 0}</p>
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-[1.35fr,0.65fr]">
               <div className="soc-panel">
                 <GraphPanel graph={data} />
               </div>
@@ -71,6 +87,21 @@ export default function ThreatGraphPage() {
                     ))}
                   </div>
                 </div>
+                <div className="soc-panel">
+                  <SectionHeader eyebrow="Nodes" title="High-risk entities" />
+                  <div className="mt-4 space-y-3">
+                    {(data.nodes || []).slice(0, 5).map((node) => (
+                      <div key={node.id} className="soc-panel-muted flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{node.label}</p>
+                          <p className="mt-1 text-xs soc-text-muted">{node.type}</p>
+                        </div>
+                        <StatusBadge tone={node.risk}>{node.risk}</StatusBadge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
               </div>
             </div>
           )}

@@ -84,6 +84,36 @@ export default function SettingsPage() {
               </section>
             </div>
           )}
+
+          {data && !error ? (
+            <section className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
+              <section className="soc-panel">
+                <SectionHeader eyebrow="Models" title="Backend model health" />
+                <div className="mt-4 space-y-3">
+                  {(data.modelHealth || []).map((item) => (
+                    <div key={item.name} className="soc-panel-muted flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{item.name}</p>
+                        <p className="mt-1 text-xs soc-text-muted">{item.detail}</p>
+                      </div>
+                      <StatusIndicator status={item.status} pulse={item.status === 'Bootstrapping'} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section className="soc-panel">
+                <SectionHeader eyebrow="Config" title="System configuration" />
+                <div className="mt-4 space-y-3">
+                  {Object.entries(data.systemConfig || {}).map(([key, value]) => (
+                    <div key={key} className="soc-panel-muted flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium text-white">{key}</p>
+                      <StatusIndicator status={String(value)} />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </section>
+          ) : null}
         </PageContainer>
       </Layout>
     </RequireAuth>

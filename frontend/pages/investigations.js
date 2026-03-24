@@ -61,32 +61,45 @@ export default function InvestigationsPage() {
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Investigation workspace snapshot" detail={error} /> : (
-            <div className="soc-panel">
-              <DataTable
-                columns={columns}
-                rows={data.entities}
-                getRowKey={(row) => row.entity}
-                renderCell={(row, key) => {
-                  if (key === 'score') return <StatusBadge tone={row.score > 90 ? 'critical' : row.score > 80 ? 'high' : 'medium'}>{row.score}</StatusBadge>;
-                  if (key === 'entity') return <span className="font-semibold text-white">{row.entity}</span>;
-                  return row[key];
-                }}
-                renderExpandedRow={(row) => {
-                  const related = data.relatedEvidence.find((item) => item.value === row.entity) || data.relatedEvidence[0];
-                  return (
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.55)]">Investigation note</p>
-                        <p className="mt-2 text-sm leading-6 soc-text-muted">{row.signal}</p>
+            <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
+              <div className="soc-panel">
+                <DataTable
+                  columns={columns}
+                  rows={data.entities}
+                  getRowKey={(row) => row.entity}
+                  renderCell={(row, key) => {
+                    if (key === 'score') return <StatusBadge tone={row.score > 90 ? 'critical' : row.score > 80 ? 'high' : 'medium'}>{row.score}</StatusBadge>;
+                    if (key === 'entity') return <span className="font-semibold text-white">{row.entity}</span>;
+                    return row[key];
+                  }}
+                  renderExpandedRow={(row) => {
+                    const related = data.relatedEvidence.find((item) => item.value === row.entity) || data.relatedEvidence[0];
+                    return (
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.55)]">Investigation note</p>
+                          <p className="mt-2 text-sm leading-6 soc-text-muted">{row.signal}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.55)]">Related evidence</p>
+                          <p className="mt-2 text-sm leading-6 soc-text-muted">{related.note}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.55)]">Related evidence</p>
-                        <p className="mt-2 text-sm leading-6 soc-text-muted">{related.note}</p>
-                      </div>
+                    );
+                  }}
+                />
+              </div>
+              <div className="soc-panel">
+                <SectionHeader eyebrow="Evidence" title="Recent related evidence" />
+                <div className="mt-4 space-y-3">
+                  {(data.relatedEvidence || []).map((item, index) => (
+                    <div key={`${item.value}-${index}`} className="soc-panel-muted">
+                      <p className="text-sm font-semibold text-white">{item.value}</p>
+                      <p className="mt-2 text-sm leading-6 soc-text-muted">{item.note}</p>
                     </div>
-                  );
-                }}
-              />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </PageContainer>

@@ -27,6 +27,10 @@ export async function getReportsWorkspace() {
     schemaVersion: 'frontend.reports.workspace.v1',
     generatedAt: reportResponse.generatedAt,
     reports: reportResponse.reports,
-    featuredReport: reportResponse.reports[0] || null
+    featuredReport: reportResponse.reports[0] || null,
+    summary: {
+      totalReports: reportResponse.reports.length,
+      criticalReports: reportResponse.reports.filter((item) => item.severity === 'Critical').length,
+    }
   };
 }

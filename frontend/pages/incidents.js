@@ -70,7 +70,27 @@ export default function IncidentsPage() {
           />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Incident queue snapshot" detail={error} /> : (
-            <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+            <div className="space-y-6">
+              <section className="grid gap-4 md:grid-cols-4">
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Queue depth</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue.length}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Critical</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue.filter((item) => item.severity === 'Critical').length}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Unassigned</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue.filter((item) => item.owner === 'Unassigned').length}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Highest risk</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue[0]?.riskScore || 0}</p>
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
               <div className="soc-panel">
                 <DataTable
                   columns={columns}
@@ -110,6 +130,18 @@ export default function IncidentsPage() {
                     <TimelinePanel items={focusIncident?.timeline || []} />
                   </div>
                 </div>
+                <div className="soc-panel">
+                  <SectionHeader eyebrow="Evidence" title="Current case evidence" />
+                  <div className="mt-4 space-y-3">
+                    {(focusIncident?.evidence || []).map((item) => (
+                      <div key={item.title} className="soc-panel-muted">
+                        <p className="text-sm font-semibold text-white">{item.title}</p>
+                        <p className="mt-2 text-sm leading-6 soc-text-muted">{item.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
               </div>
             </div>
           )}

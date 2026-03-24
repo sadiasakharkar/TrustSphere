@@ -51,7 +51,19 @@ export default function ReportsPage() {
           <SectionHeader eyebrow="Reports" title="Incident Reports" description="Review and export backend-generated SOC reports." actions={<Link href="/overview" className="soc-btn-secondary">Return to overview</Link>} />
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Report library snapshot" detail={error} /> : (
-            <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
+            <div className="space-y-6">
+              <section className="grid gap-4 md:grid-cols-2">
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Total reports</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.summary?.totalReports || 0}</p>
+                </div>
+                <div className="soc-panel-muted">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Critical reports</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.summary?.criticalReports || 0}</p>
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
               <section className="soc-panel">
                 <DataTable
                   columns={columns}
@@ -66,6 +78,12 @@ export default function ReportsPage() {
               </section>
               <section className="soc-panel">
                 <SectionHeader eyebrow="Export" title={data.featuredReport?.title || 'Select report'} />
+                {data.featuredReport ? (
+                  <div className="mb-4 soc-panel-muted">
+                    <p className="text-sm font-semibold text-white">{data.featuredReport.author}</p>
+                    <p className="mt-2 text-sm leading-6 soc-text-muted">Last updated {data.featuredReport.updated}. Severity {data.featuredReport.severity}.</p>
+                  </div>
+                ) : null}
                 <div className="mt-4 flex items-center gap-3">
                   <button
                     className="soc-btn-primary"
@@ -81,6 +99,7 @@ export default function ReportsPage() {
                 </div>
                 {exportState ? <p className="mt-4 text-sm leading-6 soc-text-muted">Artifact: {exportState.downloadPath}</p> : null}
               </section>
+              </div>
             </div>
           )}
         </PageContainer>
