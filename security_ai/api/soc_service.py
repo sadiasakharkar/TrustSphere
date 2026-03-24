@@ -40,6 +40,11 @@ class SOCService:
                 {"label": "Open Incidents", "value": open_count, "delta": "Stable", "status": "healthy", "helper": "Queue currently manageable"},
             ],
             "criticalQueue": sorted(incidents, key=lambda item: item["riskScore"], reverse=True)[:4],
+            "demoScenario": {
+                "title": "Credential compromise leading to privileged lateral movement",
+                "focusIncidentId": "INC-21403",
+                "summary": "A payroll identity pivot coincides with domain-controller movement and outbound transfer preparation.",
+            },
             "modelHealth": [
                 {"name": "UEBA Anomaly Model", "status": "Healthy", "detail": "Isolation Forest inference stable. Drift estimate 0.07."},
                 {"name": "Attack Graph Engine", "status": "High Activity", "detail": "Critical chains reconstructed from entity pivots in the last 30 minutes."},
@@ -59,6 +64,11 @@ class SOCService:
             },
             "recentActivity": self._events[:6],
             "riskDistribution": [item["riskScore"] for item in incidents],
+            "spikeSummary": {
+                "label": "Active anomaly spike",
+                "window": "Last 30 minutes",
+                "detail": "Privilege escalation, impossible-travel authentication, and exfiltration signals are clustered around two active incidents.",
+            },
         }
 
     def get_live_events(self) -> list[dict[str, Any]]:
@@ -66,7 +76,7 @@ class SOCService:
 
     def get_detection_feed(self) -> list[dict[str, Any]]:
         return [
-            {"id": "DET-001", "source": "UEBA", "status": "Healthy", "precision": 0.97, "drift": "Low", "lastUpdated": self._now_iso()},
+            {"id": "DET-001", "source": "UEBA", "status": "High Activity", "precision": 0.97, "drift": "Low", "lastUpdated": self._now_iso()},
             {"id": "DET-002", "source": "Email AI", "status": "Healthy", "precision": 0.96, "drift": "Low", "lastUpdated": self._now_iso()},
             {"id": "DET-003", "source": "URL AI", "status": "Healthy", "precision": 0.98, "drift": "Low", "lastUpdated": self._now_iso()},
             {"id": "DET-004", "source": "Prompt Guard", "status": "High Activity", "precision": 0.99, "drift": "Low", "lastUpdated": self._now_iso()},
@@ -352,23 +362,37 @@ class SOCService:
 
     def _build_events(self) -> list[dict[str, Any]]:
         base = datetime.now(timezone.utc).replace(second=0, microsecond=0)
-        entities = ["svc-wire-transfer", "acct-payroll-09", "jane.carter", "dc-east-02", "atm-cluster-02", "loan-underwrite-03"]
-        event_types = ["after_hours_login", "privilege_change", "mass_file_access", "lateral_move", "data_exfiltration", "token_refresh"]
-        severities = ["Critical", "High", "Medium", "High", "Critical", "Medium"]
+        timeline = [
+            ("INC-21403", "jane.carter", "acct-payroll-09", "UEBA", "after_hours_login", "High", 86, 0),
+            ("INC-21403", "svc-payroll-admin", "acct-payroll-09", "UEBA", "privilege_change", "Critical", 92, 3),
+            ("INC-21403", "svc-payroll-admin", "dc-east-02", "UEBA", "lateral_move", "Critical", 95, 6),
+            ("INC-21403", "svc-payroll-admin", "dc-east-02", "UEBA", "mass_file_access", "High", 84, 9),
+            ("INC-21406", "svc-wire-transfer", "atm-cluster-02", "UEBA", "data_exfiltration", "Critical", 88, 12),
+            ("INC-21404", "samir.khan", "teller-branch-11", "UEBA", "impossible_travel_login", "High", 78, 15),
+            ("INC-21404", "samir.khan", "teller-branch-11", "Prompt Guard", "unknown_device", "High", 75, 18),
+            ("INC-21405", "svc-underwrite", "loan-underwrite-03", "URL AI", "malware_signature", "High", 71, 21),
+            ("INC-21405", "svc-underwrite", "loan-underwrite-03", "Email AI", "attachment_execution", "Medium", 69, 24),
+            ("INC-21403", "jane.carter", "dc-east-02", "UEBA", "admin_token_request", "Critical", 91, 27),
+            ("INC-21406", "svc-wire-transfer", "atm-cluster-02", "UEBA", "outbound_transfer_spike", "Critical", 90, 30),
+            ("INC-21403", "svc-payroll-admin", "dc-east-02", "UEBA", "credential_rotation_failure", "High", 82, 33),
+            ("INC-21404", "samir.khan", "teller-branch-11", "UEBA", "login_failed_burst", "Medium", 67, 36),
+            ("INC-21406", "svc-wire-transfer", "atm-cluster-02", "Prompt Guard", "prompt_injection_attempt", "Medium", 64, 39),
+        ]
+
         rows: list[dict[str, Any]] = []
-        for index in range(12):
+        for index, (incident_id, user, host, source, event_type, severity, score, minutes_ago) in enumerate(timeline):
             rows.append(
                 {
                     "id": f"EVT-{3100 + index}",
-                    "incidentId": ["INC-21403", "INC-21404", "INC-21405", "INC-21406"][index % 4],
-                    "timestamp": (base - timedelta(minutes=index * 3)).strftime("%Y-%m-%d %H:%M:%S"),
-                    "entity": entities[index % len(entities)],
-                    "user": entities[index % len(entities)] if "." in entities[index % len(entities)] else "",
-                    "host": entities[index % len(entities)] if "-" in entities[index % len(entities)] else "",
-                    "source": ["UEBA", "Email AI", "URL AI", "Prompt Guard"][index % 4],
-                    "eventType": event_types[index % len(event_types)],
-                    "severity": severities[index % len(severities)],
-                    "score": [92, 86, 71, 77, 88, 69][index % 6],
+                    "incidentId": incident_id,
+                    "timestamp": (base - timedelta(minutes=minutes_ago)).strftime("%Y-%m-%d %H:%M:%S"),
+                    "entity": host or user,
+                    "user": user,
+                    "host": host,
+                    "source": source,
+                    "eventType": event_type,
+                    "severity": severity,
+                    "score": score,
                 }
             )
         return rows
@@ -383,7 +407,16 @@ class SOCService:
                     {"title": "Investigation", "detail": "Correlate IAM, EDR, and UEBA events against MITRE techniques.", "owner": "Threat Hunt", "confidence": 93},
                     {"title": "Recovery", "detail": "Restore normal access after validating clean authentication paths.", "owner": "Platform Ops", "confidence": 89},
                 ],
-            }
+            },
+            {
+                "id": "PLB-002",
+                "name": "Exfiltration suppression",
+                "steps": [
+                    {"title": "Block egress", "detail": "Suppress outbound transfer paths and revoke exposed service tokens.", "owner": "Network Ops", "confidence": 94},
+                    {"title": "Validate data scope", "detail": "Identify impacted systems and quantify data touched during the transfer spike.", "owner": "IR Lead", "confidence": 88},
+                    {"title": "Restore trusted paths", "detail": "Re-enable approved transfer workflows after token rotation and validation.", "owner": "Platform Ops", "confidence": 84},
+                ],
+            },
         ]
 
     def _build_reports(self) -> list[dict[str, Any]]:

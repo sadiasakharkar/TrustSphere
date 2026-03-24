@@ -98,14 +98,14 @@ body {
   }
 
   .soc-panel {
-    @apply rounded-xl border p-5;
+    @apply rounded-xl border p-5 transition-colors duration-200;
     background: rgba(28, 32, 38, 0.82);
     border-color: rgba(65, 71, 85, 0.55);
     box-shadow: var(--ts-shadow-soft);
   }
 
   .soc-panel-muted {
-    @apply rounded-xl border p-4;
+    @apply rounded-xl border p-4 transition-colors duration-200;
     background: rgba(24, 28, 34, 0.85);
     border-color: rgba(65, 71, 85, 0.45);
   }
@@ -184,7 +184,7 @@ body {
   }
 
   .soc-nav-link {
-    @apply flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors;
+    @apply flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors duration-200;
     color: rgba(223, 226, 235, 0.62);
   }
 
@@ -222,7 +222,7 @@ body {
   }
 
   .soc-table-row {
-    @apply transition-colors;
+    @apply transition-colors duration-150;
   }
 
   .soc-table-row:hover {
@@ -255,6 +255,12 @@ body {
   .soc-skeleton {
     @apply animate-pulse rounded-lg;
     background: linear-gradient(90deg, rgba(38, 42, 49, 0.9), rgba(49, 53, 60, 0.9), rgba(38, 42, 49, 0.9));
+  }
+
+  .soc-demo-banner {
+    @apply rounded-xl border px-4 py-3;
+    background: rgba(16, 20, 26, 0.78);
+    border-color: rgba(65, 71, 85, 0.5);
   }
 }
 

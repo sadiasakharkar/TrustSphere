@@ -1,10 +1,27 @@
 import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import StatusIndicator from './StatusIndicator';
 
 export default function SocTopbar({ onMenu }) {
   const { session, logout } = useAuth();
   const router = useRouter();
+  const [now, setNow] = useState('');
+
+  useEffect(() => {
+    const formatNow = () => {
+      const formatter = new Intl.DateTimeFormat('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: 'short'
+      });
+      setNow(formatter.format(new Date()));
+    };
+    formatNow();
+    const timer = window.setInterval(formatNow, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <header className="soc-topbar">
@@ -19,6 +36,9 @@ export default function SocTopbar({ onMenu }) {
       </div>
 
       <div className="flex items-center gap-3">
+        <div className="hidden rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 text-xs font-medium text-[rgba(223,226,235,0.72)] xl:inline-flex">
+          Live {now}
+        </div>
         <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 md:flex">
           <StatusIndicator status="Air-gapped" pulse />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />

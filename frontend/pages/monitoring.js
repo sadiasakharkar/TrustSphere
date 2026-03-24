@@ -11,6 +11,7 @@ import StatusBadge from '../components/soc/StatusBadge';
 import { getMonitoringFeed } from '../services/api/incidentService';
 import { getDetectionsOverview } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { getSocMetrics } from '../services/api/overview.service';
 
 const eventColumns = [
   { key: 'timestamp', label: 'Time' },
@@ -23,6 +24,7 @@ const eventColumns = [
 export default function MonitoringPage() {
   const [events, setEvents] = useState(null);
   const [detectors, setDetectors] = useState(null);
+  const [metrics, setMetrics] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
 
@@ -30,13 +32,15 @@ export default function MonitoringPage() {
     let active = true;
     (async () => {
       try {
-        const [eventResponse, detectionResponse] = await Promise.all([
+        const [eventResponse, detectionResponse, metricsResponse] = await Promise.all([
           getMonitoringFeed(),
-          getDetectionsOverview()
+          getDetectionsOverview(),
+          getSocMetrics()
         ]);
         if (!active) return;
         setEvents(eventResponse.events);
         setDetectors(detectionResponse.detectors);
+        setMetrics(metricsResponse);
         const workflow = await getWorkflowInsight('monitoring');
         if (active) setInsight(workflow);
       } catch (err) {
@@ -63,6 +67,17 @@ export default function MonitoringPage() {
             <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Events" title="Live event feed" description="Recent high-signal telemetry from the backend event stream." />
+                {metrics?.spikeSummary ? (
+                  <div className="mt-4 rounded-xl border border-[rgba(255,179,173,0.2)] bg-[rgba(255,179,173,0.08)] px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#ffb3ad]">{metrics.spikeSummary.label}</p>
+                        <p className="mt-1 text-sm leading-6 soc-text-muted">{metrics.spikeSummary.detail}</p>
+                      </div>
+                      <StatusBadge tone="high">{metrics.spikeSummary.window}</StatusBadge>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="mt-4">
                   <DataTable
                     columns={eventColumns}

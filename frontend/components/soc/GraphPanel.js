@@ -1,6 +1,8 @@
 import StatusBadge from './StatusBadge';
 
 export default function GraphPanel({ graph }) {
+  const activeChains = Array.isArray(graph?.chains) ? graph.chains.length : 0;
+
   return (
     <section className="soc-grid-bg overflow-hidden">
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -8,9 +10,9 @@ export default function GraphPanel({ graph }) {
           <p className="soc-kicker">Threat Graph</p>
           <h3 className="soc-section-title">Correlated attacker movement</h3>
         </div>
-        <StatusBadge tone="critical">2 active chains</StatusBadge>
+        <StatusBadge tone={activeChains >= 2 ? 'critical' : activeChains === 1 ? 'high' : 'medium'}>{activeChains} active chains</StatusBadge>
       </div>
-      <div className="relative min-h-[360px] rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.78)]">
+      <div className="relative min-h-[360px] rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.78)] transition-opacity duration-300">
         {graph.nodes.map((node) => (
           <div
             key={node.id}

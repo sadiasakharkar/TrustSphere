@@ -69,6 +69,17 @@ export default function OverviewPage() {
 
           {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Overview unavailable" detail={error} /> : (
             <>
+              <section className="soc-demo-banner">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <p className="soc-kicker">Demo Scenario</p>
+                    <h3 className="mt-2 text-base font-semibold text-white">{data.demoScenario?.title}</h3>
+                    <p className="mt-2 text-sm leading-6 soc-text-muted">{data.demoScenario?.summary}</p>
+                  </div>
+                  {data.demoScenario?.focusIncidentId ? <Link href={`/incident/${data.demoScenario.focusIncidentId}`} className="soc-btn-primary">Open focus incident</Link> : null}
+                </div>
+              </section>
+
               <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {data.metrics.map((metric) => (
                   <MetricCard key={metric.label} label={metric.label} value={metric.value} delta={metric.delta} tone={metric.status} helper={metric.helper} />
