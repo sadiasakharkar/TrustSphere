@@ -6,8 +6,8 @@ export default function HomePage() {
       <div className="topology-layer" />
       <div className="floating-orb orb-cyan" />
       <div className="floating-orb orb-violet" />
-      <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-24 text-center">
-        <section className="w-full max-w-5xl">
+      <main className="relative mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-5 py-24 text-center sm:px-6">
+        <section className="w-full max-w-4xl">
           <p className="soc-kicker">AI Security Platform</p>
           <h1 className="hero-word mt-5">TRUSTSPHERE</h1>
           <p className="mx-auto mt-6 max-w-2xl text-sm leading-7 soc-text-muted sm:text-base sm:leading-8">

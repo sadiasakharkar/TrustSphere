@@ -272,11 +272,14 @@ body {
 
 .hero-word {
   width: 100%;
-  font-size: clamp(3.2rem, 13vw, 13rem);
-  line-height: 0.9;
-  letter-spacing: 0.04em;
+  max-width: 100%;
+  font-size: clamp(2.85rem, 10.5vw, 9.5rem);
+  line-height: 0.92;
+  letter-spacing: 0.02em;
   font-weight: 800;
   font-family: 'Manrope', sans-serif;
+  white-space: normal;
+  overflow-wrap: anywhere;
   color: #ffffff;
   text-shadow: 0 0 28px rgba(173, 198, 255, 0.22);
   background: linear-gradient(90deg, #d8e2ff 0%, #adc6ff 52%, #4b8eff 100%);
