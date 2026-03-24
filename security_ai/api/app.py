@@ -9,7 +9,7 @@ import sys
 import time
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 try:
     from fastapi import FastAPI, HTTPException, Request, Response
@@ -31,13 +31,16 @@ from security_ai.api.middleware import (
     MAX_REQUEST_SIZE_BYTES,
     REQUEST_ID_HEADER,
     authenticator,
+    build_success_payload,
     client_identity,
     ensure_request_id,
     error_response,
     rate_limiter,
     read_json_body,
+    success_response,
     structured_log,
 )
+from security_ai.api.soc_service import SOCService
 from security_ai.monitoring.metrics import MetricsSnapshot, REQUEST_COUNTER, REQUEST_LATENCY, metrics_payload, record_model_snapshot
 from security_ai.registry.mlflow_registry import MLflowRegistry
 
@@ -64,11 +67,29 @@ from src.contracts import (
 
 LOGGER = logging.getLogger(__name__)
 
+
+class IncidentStatusUpdateRequest(BaseModel):
+    status: str
+
+
+class IncidentAssignmentRequest(BaseModel):
+    assignee: str
+
+
+class PlaybookRunRequest(BaseModel):
+    incidentId: str
+    playbookId: str | None = None
+
+
+class ReportExportRequest(BaseModel):
+    format: str = "markdown"
+
 if FastAPI is not None:
     app = FastAPI(title="TrustSphere Security AI Platform", version="2.0.0")
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
     loader = ModelLoader.get_instance()
     services = DetectorService(loader)
+    soc_service = SOCService()
     registry = MLflowRegistry(base_dir=__import__("pathlib").Path(__file__).resolve().parents[1])
     request_schema_registry = {
         "/detect/email": (EMAIL_REQUEST_SCHEMA_VERSION, EmailDetectionRequest),
@@ -115,9 +136,8 @@ if FastAPI is not None:
             )
             return error_response(
                 status_code=getattr(exc, "status_code", 500),
-                error_code="http_error",
                 message=str(getattr(exc, "detail", "Unhandled HTTP exception")),
-                request_id=request_id,
+                meta={"requestId": request_id, "path": endpoint},
             )
         except Exception as exc:
             LOGGER.exception("Unhandled API error on %s: %s", endpoint, exc)
@@ -135,9 +155,8 @@ if FastAPI is not None:
             )
             return error_response(
                 status_code=500,
-                error_code="internal_error",
                 message="Internal server error",
-                request_id=request_id,
+                meta={"requestId": request_id, "path": endpoint},
             )
         finally:
             REQUEST_LATENCY.labels(endpoint).observe(time.perf_counter() - start)
@@ -157,10 +176,8 @@ if FastAPI is not None:
         if not allowed:
             return error_response(
                 status_code=429,
-                error_code="rate_limit_exceeded",
                 message="Rate limit exceeded.",
-                request_id=request_id,
-                details={"retry_after_seconds": retry_after},
+                meta={"requestId": request_id, "retryAfterSeconds": retry_after},
             )
 
         if request.method.upper() != "POST":
@@ -170,34 +187,30 @@ if FastAPI is not None:
         if declared_size > MAX_REQUEST_SIZE_BYTES:
             return error_response(
                 status_code=413,
-                error_code="request_too_large",
                 message=f"Request body exceeds {MAX_REQUEST_SIZE_BYTES} bytes.",
-                request_id=request_id,
+                meta={"requestId": request_id},
             )
 
         body = await request.body()
         if not body:
             return error_response(
                 status_code=422,
-                error_code="empty_body",
                 message="Request body is required.",
-                request_id=request_id,
+                meta={"requestId": request_id},
             )
         if len(body) > MAX_REQUEST_SIZE_BYTES:
             return error_response(
                 status_code=413,
-                error_code="request_too_large",
                 message=f"Request body exceeds {MAX_REQUEST_SIZE_BYTES} bytes.",
-                request_id=request_id,
+                meta={"requestId": request_id},
             )
         try:
             payload = read_json_body(body)
         except json.JSONDecodeError as exc:
             return error_response(
                 status_code=422,
-                error_code="invalid_json",
                 message=f"Invalid JSON payload: {exc.msg}",
-                request_id=request_id,
+                meta={"requestId": request_id},
             )
 
         if endpoint in request_schema_registry:
@@ -205,19 +218,16 @@ if FastAPI is not None:
             if payload.get("schema_version") != expected_version:
                 return error_response(
                     status_code=422,
-                    error_code="invalid_schema_version",
                     message=f"Unsupported schema_version for {endpoint}. Expected {expected_version}.",
-                    request_id=request_id,
+                    meta={"requestId": request_id, "expectedSchemaVersion": expected_version},
                 )
             try:
                 schema_model.model_validate(payload)
             except ValidationError as exc:
                 return error_response(
                     status_code=422,
-                    error_code="schema_validation_failed",
                     message=f"Request schema validation failed for {endpoint}.",
-                    request_id=request_id,
-                    details=exc.errors(),
+                    meta={"requestId": request_id, "details": exc.errors()},
                 )
 
         async def receive() -> dict[str, Any]:
@@ -230,29 +240,24 @@ if FastAPI is not None:
     async def request_validation_exception_handler(request: Request, exc: RequestValidationError):
         return error_response(
             status_code=422,
-            error_code="request_validation_failed",
             message="Request validation failed.",
-            request_id=getattr(request.state, "request_id", None),
-            details=exc.errors(),
+            meta={"requestId": getattr(request.state, "request_id", None), "details": exc.errors()},
         )
 
     @app.exception_handler(ValidationError)
     async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
         return error_response(
             status_code=422,
-            error_code="validation_failed",
             message="Validation failed.",
-            request_id=getattr(request.state, "request_id", None),
-            details=exc.errors(),
+            meta={"requestId": getattr(request.state, "request_id", None), "details": exc.errors()},
         )
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
         return error_response(
             status_code=getattr(exc, "status_code", 500),
-            error_code="http_exception",
             message=str(getattr(exc, "detail", "HTTP exception")),
-            request_id=getattr(request.state, "request_id", None),
+            meta={"requestId": getattr(request.state, "request_id", None)},
         )
 
     @app.on_event("startup")
@@ -270,7 +275,9 @@ if FastAPI is not None:
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
-        return {"status": "ok", "service": "trustsphere-security-platform", "async_inference": True, "offline_capable": True}
+        return build_success_payload(
+            data={"status": "ok", "service": "trustsphere-security-platform", "async_inference": True, "offline_capable": True}
+        )
 
     @app.get("/metrics")
     async def metrics() -> Response:
@@ -279,26 +286,124 @@ if FastAPI is not None:
 
     @app.post("/detect/email")
     async def detect_email(request: EmailDetectionRequest):
-        return await services.detect_email(request.model_dump())
+        result = await services.detect_email(request.model_dump())
+        return success_response(result)
 
     @app.post("/detect/url")
     async def detect_url(request: URLDetectionRequest):
-        return await services.detect_url(request.model_dump())
+        result = await services.detect_url(request.model_dump())
+        return success_response(result)
 
     @app.post("/detect/credential")
     async def detect_credential(request: CredentialDetectionRequest):
-        return await services.detect_credential(request.model_dump())
+        result = await services.detect_credential(request.model_dump())
+        return success_response(result)
 
     @app.post("/detect/attachment")
     async def detect_attachment(request: AttachmentDetectionRequest):
-        return await services.detect_attachment(request.model_dump())
+        result = await services.detect_attachment(request.model_dump())
+        return success_response(result)
 
     @app.post("/guard/prompt")
     async def guard_prompt(request: PromptGuardRequest):
-        return await services.guard_prompt(request.model_dump())
+        result = await services.guard_prompt(request.model_dump())
+        return success_response(result)
 
     @app.post("/analyze/incident")
     async def analyze_incident(request: IncidentAnalysisRequest) -> IncidentReport:
-        return await services.analyze_incident(request.model_dump())
+        result = await services.analyze_incident(request.model_dump())
+        return success_response(result)
+
+    @app.get("/api/overview/summary")
+    async def overview_summary():
+        return success_response(soc_service.get_overview_summary())
+
+    @app.get("/api/metrics/soc")
+    async def soc_metrics():
+        return success_response(soc_service.get_soc_metrics())
+
+    @app.get("/api/events/live")
+    async def live_events():
+        events = soc_service.get_live_events()
+        return success_response(events, meta={"count": len(events)})
+
+    @app.get("/api/detections/feed")
+    async def detections_feed():
+        feed = soc_service.get_detection_feed()
+        return success_response(feed, meta={"count": len(feed)})
+
+    @app.get("/api/incidents")
+    async def incidents():
+        rows = soc_service.list_incidents()
+        return success_response(rows, meta={"count": len(rows)})
+
+    @app.get("/api/incidents/{incident_id}")
+    async def incident_detail(incident_id: str):
+        incident = soc_service.get_incident(incident_id)
+        if incident is None:
+            return error_response(404, "Incident not found.", meta={"incidentId": incident_id})
+        return success_response(incident)
+
+    @app.patch("/api/incidents/{incident_id}/status")
+    async def update_incident_status(incident_id: str, request: IncidentStatusUpdateRequest):
+        incident = soc_service.update_incident_status(incident_id, request.status)
+        if incident is None:
+            return error_response(404, "Incident not found.", meta={"incidentId": incident_id})
+        return success_response(incident, meta={"message": "Incident status updated."})
+
+    @app.patch("/api/incidents/{incident_id}/assign")
+    async def assign_incident(incident_id: str, request: IncidentAssignmentRequest):
+        incident = soc_service.assign_incident(incident_id, request.assignee)
+        if incident is None:
+            return error_response(404, "Incident not found.", meta={"incidentId": incident_id})
+        return success_response(incident, meta={"message": "Incident assigned."})
+
+    @app.get("/api/investigations/entity/{entity_id}")
+    async def investigation_entity(entity_id: str):
+        return success_response(soc_service.get_investigation_entity(entity_id))
+
+    @app.get("/api/events/search")
+    async def search_events(query: str = "", severity: str | None = None):
+        rows = soc_service.search_events(query=query, severity=severity)
+        return success_response(rows, meta={"count": len(rows), "query": query, "severity": severity})
+
+    @app.get("/api/attack-graph")
+    async def attack_graph():
+        return success_response(soc_service.get_attack_graph())
+
+    @app.get("/api/attack-graph/{incident_id}")
+    async def incident_attack_graph(incident_id: str):
+        return success_response(soc_service.get_attack_graph(incident_id=incident_id))
+
+    @app.get("/api/playbooks")
+    async def playbooks():
+        rows = soc_service.list_playbooks()
+        return success_response(rows, meta={"count": len(rows)})
+
+    @app.post("/api/playbooks/run")
+    async def run_playbook(request: PlaybookRunRequest):
+        result = soc_service.run_playbook(incident_id=request.incidentId, playbook_id=request.playbookId)
+        return success_response(result, meta={"message": "Playbook prepared for execution."})
+
+    @app.get("/api/reports")
+    async def reports():
+        rows = soc_service.list_reports()
+        return success_response(rows, meta={"count": len(rows)})
+
+    @app.post("/api/reports/{report_id}/export")
+    async def export_report(report_id: str, request: ReportExportRequest):
+        result = soc_service.export_report(report_id, export_format=request.format)
+        if result is None:
+            return error_response(404, "Report not found.", meta={"reportId": report_id})
+        return success_response(result, meta={"message": "Report export created."})
+
+    @app.get("/api/admin/system")
+    async def admin_system():
+        return success_response(soc_service.get_admin_system())
+
+    @app.get("/api/admin/users")
+    async def admin_users():
+        rows = soc_service.get_admin_users()
+        return success_response(rows, meta={"count": len(rows)})
 else:
     app = None

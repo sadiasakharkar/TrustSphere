@@ -73,42 +73,40 @@ rate_limiter = InMemoryRateLimiter()
 authenticator = APIKeyAuthenticator()
 
 
-def build_error_payload(
-    status_code: int,
-    error_code: str,
-    message: str,
-    request_id: str | None = None,
-    details: Any | None = None,
-) -> dict[str, Any]:
+def build_success_payload(data: Any, meta: dict[str, Any] | None = None) -> dict[str, Any]:
     return {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "request_id": request_id,
-        "error": {
-            "status_code": status_code,
-            "code": error_code,
-            "message": message,
-            "details": details,
+        "success": True,
+        "data": data,
+        "meta": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **(meta or {}),
         },
+        "error": None,
     }
 
 
-def error_response(
-    status_code: int,
-    error_code: str,
+def build_error_payload(
     message: str,
-    request_id: str | None = None,
-    details: Any | None = None,
-):
-    return JSONResponse(
-        status_code=status_code,
-        content=build_error_payload(
-            status_code=status_code,
-            error_code=error_code,
-            message=message,
-            request_id=request_id,
-            details=details,
-        ),
-    )
+    *,
+    meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    return {
+        "success": False,
+        "data": None,
+        "meta": {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            **(meta or {}),
+        },
+        "error": message,
+    }
+
+
+def success_response(data: Any, *, meta: dict[str, Any] | None = None, status_code: int = 200):
+    return JSONResponse(status_code=status_code, content=build_success_payload(data=data, meta=meta))
+
+
+def error_response(status_code: int, message: str, *, meta: dict[str, Any] | None = None):
+    return JSONResponse(status_code=status_code, content=build_error_payload(message=message, meta=meta))
 
 
 def ensure_request_id(request: Request) -> str:
