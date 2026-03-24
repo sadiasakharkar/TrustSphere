@@ -68,9 +68,9 @@ class ModelLoader:
 
     def load_trustsphere_pipeline(self):
         def factory():
-            from src.pipeline.trustsphere_pipeline import TrustSpherePipeline
+            from src.pipeline.unified_intelligence_pipeline import UnifiedIntelligencePipeline
 
-            return TrustSpherePipeline(TRUSTSPHERE_AI_DIR)
+            return UnifiedIntelligencePipeline(TRUSTSPHERE_AI_DIR)
 
         return self._get_or_create("trustsphere_pipeline", factory)
 

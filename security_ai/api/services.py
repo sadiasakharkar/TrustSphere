@@ -54,9 +54,9 @@ class DetectorService:
         pipeline = self.loader.load_trustsphere_pipeline()
         return await self._timed_inference(
             "incident",
-            pipeline.analyze_incident,
+            pipeline.run,
             payload.get("logs", []),
-            transform=lambda result: result.model_dump(mode="json"),
+            transform=lambda result: result.incident_report.model_dump(mode="json"),
         )
 
     async def _timed_inference(self, detector: str, fn, *args, transform=None):

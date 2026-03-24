@@ -1,29 +1,22 @@
-"""Unified pipeline interfaces for TrustSphere intelligence."""
+"""Unified pipeline interfaces for TrustSphere intelligence.
 
-from ..contracts import (
-    AnomalyResult,
-    AttackChain,
-    AttackGraphEdge,
-    AttackGraphNode,
-    AttackGraphResult,
-    FeatureMatrix,
-    FeatureRow,
-    IncidentReport,
-    NormalizedLog,
-    RiskResult,
-)
-from .trustsphere_pipeline import TrustSpherePipeline
+Imports are intentionally lazy here so lightweight modules like the normalizer can
+be imported without pulling in the full ML/runtime stack.
+"""
+
+from __future__ import annotations
+
+from importlib import import_module
 
 __all__ = [
-    "AnomalyResult",
-    "AttackChain",
-    "AttackGraphEdge",
-    "AttackGraphNode",
-    "AttackGraphResult",
-    "FeatureMatrix",
-    "FeatureRow",
-    "IncidentReport",
-    "NormalizedLog",
-    "RiskResult",
     "TrustSpherePipeline",
+    "UnifiedIntelligencePipeline",
 ]
+
+
+def __getattr__(name: str):
+    if name == "TrustSpherePipeline":
+        return import_module("src.pipeline.trustsphere_pipeline").TrustSpherePipeline
+    if name == "UnifiedIntelligencePipeline":
+        return import_module("src.pipeline.unified_intelligence_pipeline").UnifiedIntelligencePipeline
+    raise AttributeError(name)
