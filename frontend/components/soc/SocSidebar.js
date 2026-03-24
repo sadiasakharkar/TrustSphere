@@ -23,7 +23,7 @@ export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose })
               </div>
             ) : null}
           </div>
-          <button className="soc-btn-ghost px-2 py-1" onClick={onToggle} aria-label="Toggle sidebar width">
+          <button className="soc-btn-ghost hidden px-2 py-1 lg:inline-flex" onClick={onToggle} aria-label="Toggle sidebar width">
             <span className="material-symbols-outlined">{collapsed ? 'left_panel_open' : 'left_panel_close'}</span>
           </button>
         </div>

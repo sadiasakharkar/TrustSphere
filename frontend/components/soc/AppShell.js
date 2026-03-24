@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import RightInsightDrawer from './RightInsightDrawer';
 import SocSidebar from './SocSidebar';
 import SocTopbar from './SocTopbar';
 
-export default function AppShell({ children }) {
+export default function AppShell({ children, insightSummary = null }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -34,9 +35,12 @@ export default function AppShell({ children }) {
         onClose={() => setMobileOpen(false)}
       />
       <main className="soc-workspace" style={isDesktop ? { marginLeft: sidebarWidth } : undefined}>
-        <div className="mx-auto w-full max-w-[1440px]">
+        <div className="soc-layout-frame">
           <SocTopbar onMenu={() => setMobileOpen(true)} />
-          <div className="pt-6">{children}</div>
+          <div className={`soc-content-grid ${insightSummary ? 'soc-content-grid-with-drawer' : ''}`}>
+            <section className="soc-content-main">{children}</section>
+            <RightInsightDrawer summary={insightSummary} />
+          </div>
         </div>
       </main>
     </div>

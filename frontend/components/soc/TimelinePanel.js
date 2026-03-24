@@ -1,6 +1,6 @@
-export default function TimelinePanel({ items = [] }) {
+export default function TimelinePanel({ items = [], embedded = false }) {
   return (
-    <div className="soc-panel">
+    <div className={embedded ? 'space-y-4' : 'soc-panel'}>
       <div className="space-y-4">
         {items.map((item, index) => (
           <div key={`${item.time}-${item.title}`} className="relative pl-8">

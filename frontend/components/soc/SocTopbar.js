@@ -12,7 +12,7 @@ export default function SocTopbar({ onMenu }) {
         <button className="soc-btn-ghost lg:hidden" onClick={onMenu} aria-label="Open navigation">
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <div className="relative w-full max-w-md">
+        <div className="relative w-full max-w-[420px]">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(193,198,215,0.5)]">search</span>
           <input className="soc-input pl-10" placeholder="Search incidents, assets, IPs, or users" />
         </div>

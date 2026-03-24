@@ -19,24 +19,24 @@ const commonOptions = {
   responsive: true,
   maintainAspectRatio: false,
   animation: {
-    duration: 900,
-    easing: 'easeOutQuart'
+    duration: 320,
+    easing: 'easeOutCubic'
   },
   plugins: {
     legend: {
       labels: {
-        color: '#E6EDF3'
+        color: '#dfe2eb'
       }
     }
   },
   scales: {
     x: {
-      ticks: { color: '#E6EDF3' },
-      grid: { color: 'rgba(255,255,255,0.08)' }
+      ticks: { color: 'rgba(223,226,235,0.82)' },
+      grid: { color: 'rgba(65,71,85,0.35)' }
     },
     y: {
-      ticks: { color: '#E6EDF3' },
-      grid: { color: 'rgba(255,255,255,0.08)' }
+      ticks: { color: 'rgba(223,226,235,0.82)' },
+      grid: { color: 'rgba(65,71,85,0.35)' }
     }
   }
 };
@@ -52,12 +52,12 @@ export function AnomalyLineChart({ series, title = 'Anomaly Trends Over Time', l
             {
               label,
               data: series,
-              borderColor: '#00FFFF',
-              backgroundColor: 'rgba(0,255,255,0.2)',
+              borderColor: '#adc6ff',
+              backgroundColor: 'rgba(173,198,255,0.16)',
               fill: true,
               tension: 0.36,
               pointRadius: 3,
-              pointBackgroundColor: '#4FD1C5'
+              pointBackgroundColor: '#4b8eff'
             }
           ]
         }}
@@ -77,7 +77,7 @@ export function AlertPieChart({ items, title = 'Alert Type Distribution' }) {
           plugins: {
             legend: {
               position: 'bottom',
-              labels: { color: '#E6EDF3' }
+              labels: { color: '#dfe2eb' }
             }
           }
         }}
@@ -86,7 +86,7 @@ export function AlertPieChart({ items, title = 'Alert Type Distribution' }) {
           datasets: [
             {
               data: items.map((item) => item.value),
-              backgroundColor: ['#00FFFF', '#4FD1C5', '#7F5AF0', '#40A9FF', '#1E88E5']
+              backgroundColor: ['#adc6ff', '#4b8eff', '#7aa2ff', '#6d7f9f', '#4ae176']
             }
           ]
         }}
@@ -106,7 +106,7 @@ export function SeverityBarChart({ values, title = 'Severity Levels' }) {
             {
               label: 'Events',
               data: values,
-              backgroundColor: ['#40A9FF', '#4FD1C5', '#00FFFF', '#FFA500', '#FF4B4B']
+              backgroundColor: ['#6d7f9f', '#4ae176', '#adc6ff', '#ffb3ad', '#ff8a80']
             }
           ]
         }}
@@ -126,12 +126,12 @@ export function DualSeriesBarChart({ labels, firstSeries, secondSeries, title })
             {
               label: 'Behavioral Deviations',
               data: firstSeries,
-              backgroundColor: '#00FFFF'
+              backgroundColor: '#adc6ff'
             },
             {
               label: 'Correlated Alerts',
               data: secondSeries,
-              backgroundColor: '#7F5AF0'
+              backgroundColor: '#4b8eff'
             }
           ]
         }}

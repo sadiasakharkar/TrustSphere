@@ -77,6 +77,26 @@ body {
     @apply min-h-screen px-4 pb-8 pt-4 transition-all duration-300 md:px-6 md:pb-10 md:pt-6;
   }
 
+  .soc-layout-frame {
+    @apply mx-auto w-full max-w-[1440px];
+  }
+
+  .soc-content-grid {
+    @apply pt-6;
+  }
+
+  .soc-content-main {
+    @apply min-w-0;
+  }
+
+  .soc-insight-drawer {
+    @apply hidden xl:block;
+  }
+
+  .soc-content-grid-with-drawer {
+    @apply xl:grid xl:grid-cols-[minmax(0,1fr)_304px] xl:gap-8;
+  }
+
   .soc-panel {
     @apply rounded-xl border p-5;
     background: rgba(28, 32, 38, 0.82);
@@ -227,6 +247,7 @@ body {
   }
 
   .soc-grid-bg {
+    @apply rounded-xl;
     background-image: radial-gradient(rgba(28, 32, 38, 0.95) 1px, transparent 1px);
     background-size: 28px 28px;
   }
@@ -234,6 +255,12 @@ body {
   .soc-skeleton {
     @apply animate-pulse rounded-lg;
     background: linear-gradient(90deg, rgba(38, 42, 49, 0.9), rgba(49, 53, 60, 0.9), rgba(38, 42, 49, 0.9));
+  }
+}
+
+@media (max-width: 1279px) {
+  .soc-content-grid-with-drawer {
+    display: block;
   }
 }
 

@@ -7,6 +7,7 @@ import AIInsightPanel from '../../components/soc/AIInsightPanel';
 import EntityPill from '../../components/soc/EntityPill';
 import EvidenceAccordion from '../../components/soc/EvidenceAccordion';
 import LoadingSkeleton from '../../components/soc/LoadingSkeleton';
+import PageContainer from '../../components/soc/PageContainer';
 import PageHeader from '../../components/soc/PageHeader';
 import PlaybookChecklist from '../../components/soc/PlaybookChecklist';
 import SeverityBadge from '../../components/soc/SeverityBadge';
@@ -25,9 +26,19 @@ export default function IncidentDetailPage() {
 
   return (
     <RequireAuth>
-      <Layout insightSummary={{ title: 'Incident detail focus: validate timeline, evidence, affected entities, and graph sequence before response approval.' }}>
+      <Layout
+        insightSummary={{
+          title: 'Incident detail focus',
+          description: 'Validate timeline, evidence, affected entities, and graph sequence before approving containment or resolution.',
+          bullets: [
+            'Confirm initiating access signal before escalation.',
+            'Check privileged asset exposure in the graph path.',
+            'Use evidence stack to support response decisions.'
+          ]
+        }}
+      >
         {!data ? <LoadingSkeleton rows={6} /> : (
-          <div className="space-y-6">
+          <PageContainer>
             <PageHeader kicker="Incident Detail" title={data.summary.title} description="This incident workspace consolidates UEBA, graph, and reasoning context so analysts can move from triage into evidence-backed response." actions={<SeverityBadge level={data.summary.severity}>{data.summary.severity}</SeverityBadge>} />
             <section className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
               <div className="soc-panel">
@@ -59,8 +70,8 @@ export default function IncidentDetailPage() {
                 <div className="mt-4"><PlaybookChecklist steps={[{ title: 'Contain privileged access', detail: 'Disable service tokens and isolate lateral movement path.', owner: 'IAM + IR', confidence: 94 }, { title: 'Block exfiltration route', detail: 'Terminate destination sessions and block outbound route at perimeter.', owner: 'Network Ops', confidence: 92 }]} /></div>
               </section>
               <GraphPanel graph={graphWorkspace} />
-            </section>
-          </div>
+              </section>
+          </PageContainer>
         )}
       </Layout>
     </RequireAuth>
