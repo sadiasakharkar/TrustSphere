@@ -10,6 +10,8 @@ export async function getOverviewSummary() {
   return {
     schemaVersion: 'frontend.overview.v2',
     generatedAt: summary.meta?.timestamp || new Date().toISOString(),
+    sourceMode: summary.meta?.mode || 'bootstrap',
+    streamCounter: summary.meta?.streamCounter || 0,
     ...summary.data,
     analytics: metrics.data
   };
@@ -20,6 +22,8 @@ export async function getSocMetrics() {
   return {
     schemaVersion: 'frontend.metrics.v1',
     generatedAt: response.meta?.timestamp || new Date().toISOString(),
+    sourceMode: response.meta?.mode || 'bootstrap',
+    streamCounter: response.meta?.streamCounter || 0,
     ...response.data
   };
 }

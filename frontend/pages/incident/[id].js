@@ -30,7 +30,7 @@ export default function IncidentDetailPage() {
   useEffect(() => {
     if (!router.query.id) return;
     let active = true;
-    (async () => {
+    const load = async () => {
       try {
         const [incident, incidentGraph, availablePlaybooks] = await Promise.all([
           getIncidentDetail(router.query.id),
@@ -46,9 +46,12 @@ export default function IncidentDetailPage() {
       } catch (err) {
         if (active) setError(err.message || 'Unable to load incident workspace.');
       }
-    })();
+    };
+    load();
+    const interval = window.setInterval(load, 2000);
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
   }, [router.query.id]);
 

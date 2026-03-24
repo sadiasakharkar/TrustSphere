@@ -18,7 +18,7 @@ export default function ThreatGraphPage() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    const load = async () => {
       try {
         const graph = await getThreatGraph();
         if (active) {
@@ -29,9 +29,12 @@ export default function ThreatGraphPage() {
       } catch (err) {
         if (active) setError(err.message || 'Unable to load attack graph.');
       }
-    })();
+    };
+    load();
+    const interval = window.setInterval(load, 2000);
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
   }, []);
 

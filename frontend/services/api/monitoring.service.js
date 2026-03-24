@@ -6,6 +6,8 @@ export async function getLiveEvents() {
   return {
     schemaVersion: 'frontend.monitoring.v2',
     generatedAt: response.meta?.timestamp || new Date().toISOString(),
+    sourceMode: response.meta?.mode || 'bootstrap',
+    streamCounter: response.meta?.streamCounter || 0,
     events: response.data
   };
 }
@@ -15,6 +17,8 @@ export async function getDetectionsFeed() {
   return {
     schemaVersion: 'frontend.detections.feed.v1',
     generatedAt: response.meta?.timestamp || new Date().toISOString(),
+    sourceMode: response.meta?.mode || 'bootstrap',
+    streamCounter: response.meta?.streamCounter || 0,
     detectors: response.data
   };
 }

@@ -1,12 +1,14 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { apiRequest } from '../../services/api/apiClient';
 import StatusIndicator from './StatusIndicator';
 
 export default function SocTopbar({ onMenu }) {
   const { session, logout } = useAuth();
   const router = useRouter();
   const [now, setNow] = useState('');
+  const [modeStatus, setModeStatus] = useState({ bootstrapMode: true, mode: 'bootstrap' });
 
   useEffect(() => {
     const formatNow = () => {
@@ -21,6 +23,30 @@ export default function SocTopbar({ onMenu }) {
     formatNow();
     const timer = window.setInterval(formatNow, 30000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadStatus = async () => {
+      try {
+        const response = await apiRequest('/health');
+        if (!active) return;
+        setModeStatus({
+          bootstrapMode: Boolean(response.data?.bootstrapMode),
+          mode: response.data?.mode || 'bootstrap',
+        });
+      } catch {
+        if (active) {
+          setModeStatus({ bootstrapMode: true, mode: 'bootstrap' });
+        }
+      }
+    };
+    loadStatus();
+    const timer = window.setInterval(loadStatus, 2000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, []);
 
   return (
@@ -40,13 +66,13 @@ export default function SocTopbar({ onMenu }) {
           Live {now}
         </div>
         <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 md:flex">
-          <StatusIndicator status="Air-gapped" pulse />
+          <StatusIndicator status={modeStatus.bootstrapMode ? 'Bootstrap mode' : 'Live AI mode'} pulse={modeStatus.bootstrapMode} />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
           <StatusIndicator status="Inference healthy" />
         </div>
-        <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push('/settings')}>
+        <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push(session.role === 'admin' ? '/settings' : '/overview')}>
           <span className="material-symbols-outlined">manage_accounts</span>
-          {session.role}
+          {session.role === 'admin' ? 'Admin' : 'Analyst'}
         </button>
         <button
           className="soc-btn-ghost"

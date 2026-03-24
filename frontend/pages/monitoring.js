@@ -12,7 +12,6 @@ import { getMonitoringFeed } from '../services/api/incidentService';
 import { getDetectionsOverview } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
 import { getSocMetrics } from '../services/api/overview.service';
-import { isDemoMode } from '../services/api/apiClient';
 
 const eventColumns = [
   { key: 'timestamp', label: 'Time' },
@@ -49,10 +48,10 @@ export default function MonitoringPage() {
       }
     };
     load();
-    const interval = isDemoMode() ? window.setInterval(load, 5000) : null;
+    const interval = window.setInterval(load, 2000);
     return () => {
       active = false;
-      if (interval) window.clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, []);
 

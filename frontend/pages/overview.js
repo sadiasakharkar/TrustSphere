@@ -13,7 +13,6 @@ import EmptyState from '../components/soc/EmptyState';
 import { getOverviewSummary } from '../services/api/overviewService';
 import { getIncidentDetail } from '../services/api/incidentService';
 import { getWorkflowInsight } from '../services/api/insight.service';
-import { isDemoMode } from '../services/api/apiClient';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -48,10 +47,10 @@ export default function OverviewPage() {
       }
     };
     load();
-    const interval = isDemoMode() ? window.setInterval(load, 5000) : null;
+    const interval = window.setInterval(load, 2000);
     return () => {
       active = false;
-      if (interval) window.clearInterval(interval);
+      window.clearInterval(interval);
     };
   }, []);
 

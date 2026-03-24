@@ -6,6 +6,8 @@ export async function getIncidents() {
   return {
     schemaVersion: 'frontend.triage.v2',
     generatedAt: response.meta?.timestamp || new Date().toISOString(),
+    sourceMode: response.meta?.mode || 'bootstrap',
+    streamCounter: response.meta?.streamCounter || 0,
     queue: response.data
   };
 }
@@ -16,6 +18,8 @@ export async function getIncidentDetail(id) {
   return {
     schemaVersion: 'frontend.incident.v2',
     generatedAt: response.meta?.timestamp || new Date().toISOString(),
+    sourceMode: response.meta?.mode || 'bootstrap',
+    streamCounter: response.meta?.streamCounter || 0,
     ...response.data
   };
 }

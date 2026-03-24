@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+import random
 from threading import RLock
 from typing import Any
 
@@ -20,8 +22,45 @@ class SOCService:
         self._users = self._build_users()
         self._system_status = self._build_system_status()
         self._attack_graph = self._build_attack_graph()
+        self._random = random.Random(42)
+        self._bootstrap_mode = True
+        self._stream_counter = 0
+        self._bootstrap_duration_seconds = 7
+        self._bootstrap_started_at = self._now_iso()
+        self._bootstrap_state = self.generate_bootstrap_state()
+
+    async def activate_bootstrap_transition(self, duration_seconds: int | None = None) -> None:
+        self._bootstrap_mode = True
+        self._bootstrap_started_at = self._now_iso()
+        self._bootstrap_duration_seconds = duration_seconds or self._bootstrap_duration_seconds
+        self._bootstrap_state = self.generate_bootstrap_state()
+        await asyncio.sleep(self._bootstrap_duration_seconds)
+        with self._lock:
+            self._bootstrap_mode = False
+            self._system_status["environment"] = "live-ai-mode"
+            self._system_status["lastUpdated"] = self._now_iso()
+
+    async def run_streaming_updates(self) -> None:
+        while True:
+            await asyncio.sleep(2 if self._bootstrap_mode else 5)
+            with self._lock:
+                self._stream_counter += 1
+                if self._bootstrap_mode:
+                    self._tick_bootstrap_state()
+                else:
+                    self._tick_live_state()
+
+    def response_meta(self) -> dict[str, Any]:
+        return {
+            "mode": "bootstrap" if self._bootstrap_mode else "live",
+            "bootstrapMode": self._bootstrap_mode,
+            "streamCounter": self._stream_counter,
+            "startedAt": self._bootstrap_started_at,
+        }
 
     def get_overview_summary(self) -> dict[str, Any]:
+        if self._bootstrap_mode:
+            return deepcopy(self._bootstrap_state["overview"])
         incidents = list(self._incidents.values())
         critical = sum(1 for item in incidents if item["severity"] == "Critical")
         active = sum(1 for item in incidents if item["status"] != "Resolved")
@@ -54,6 +93,8 @@ class SOCService:
         }
 
     def get_soc_metrics(self) -> dict[str, Any]:
+        if self._bootstrap_mode:
+            return deepcopy(self._bootstrap_state["metrics"])
         incidents = list(self._incidents.values())
         return {
             "severityDistribution": {
@@ -72,9 +113,13 @@ class SOCService:
         }
 
     def get_live_events(self) -> list[dict[str, Any]]:
+        if self._bootstrap_mode:
+            return deepcopy(self._bootstrap_state["events"])
         return deepcopy(self._events)
 
     def get_detection_feed(self) -> list[dict[str, Any]]:
+        if self._bootstrap_mode:
+            return deepcopy(self._bootstrap_state["detections"])
         return [
             {"id": "DET-001", "source": "UEBA", "status": "High Activity", "precision": 0.97, "drift": "Low", "lastUpdated": self._now_iso()},
             {"id": "DET-002", "source": "Email AI", "status": "Healthy", "precision": 0.96, "drift": "Low", "lastUpdated": self._now_iso()},
@@ -83,9 +128,16 @@ class SOCService:
         ]
 
     def list_incidents(self) -> list[dict[str, Any]]:
+        if self._bootstrap_mode:
+            return sorted(deepcopy(list(self._bootstrap_state["incidents"].values())), key=lambda item: item["riskScore"], reverse=True)
         return sorted(deepcopy(list(self._incidents.values())), key=lambda item: item["riskScore"], reverse=True)
 
     def get_incident(self, incident_id: str) -> dict[str, Any] | None:
+        if self._bootstrap_mode:
+            incident = self._bootstrap_state["incidents"].get(incident_id)
+            if incident is None:
+                return None
+            return deepcopy(incident)
         incident = self._incidents.get(incident_id)
         if incident is None:
             return None
@@ -126,6 +178,14 @@ class SOCService:
             return deepcopy(incident)
 
     def get_investigation_entity(self, entity_id: str) -> dict[str, Any]:
+        if self._bootstrap_mode:
+            matched_events = [event for event in self._bootstrap_state["events"] if entity_id in {event["entity"], event.get("user", ""), event.get("host", "")}] or self._bootstrap_state["events"][:4]
+            return {
+                "entity": entity_id,
+                "timeline": matched_events,
+                "aiSummary": f"{entity_id} is participating in a seeded bootstrap incident chain with abnormal access and pivot behavior.",
+                "relatedAlerts": [event["id"] for event in matched_events],
+            }
         matched_events = [event for event in self._events if entity_id in {event["entity"], event.get("user", ""), event.get("host", "")}] or self._events[:4]
         return {
             "entity": entity_id,
@@ -136,7 +196,7 @@ class SOCService:
 
     def search_events(self, query: str = "", severity: str | None = None) -> list[dict[str, Any]]:
         query_lower = query.lower().strip()
-        rows = self._events
+        rows = self._bootstrap_state["events"] if self._bootstrap_mode else self._events
         if query_lower:
             rows = [row for row in rows if query_lower in row["entity"].lower() or query_lower in row["eventType"].lower()]
         if severity:
@@ -144,7 +204,7 @@ class SOCService:
         return deepcopy(rows)
 
     def get_attack_graph(self, incident_id: str | None = None) -> dict[str, Any]:
-        graph = deepcopy(self._attack_graph)
+        graph = deepcopy(self._bootstrap_state["attackGraph"] if self._bootstrap_mode else self._attack_graph)
         if incident_id:
             graph["incidentId"] = incident_id
         graph["riskLevels"] = [node["risk"] for node in graph["nodes"]]
@@ -180,10 +240,277 @@ class SOCService:
         }
 
     def get_admin_system(self) -> dict[str, Any]:
-        return deepcopy(self._system_status)
+        system = deepcopy(self._system_status)
+        system["mode"] = "bootstrap" if self._bootstrap_mode else "live"
+        system["streamCounter"] = self._stream_counter
+        system["lastUpdated"] = self._now_iso()
+        system["modelHealth"] = self._bootstrap_state["modelHealth"] if self._bootstrap_mode else self.get_detection_feed()
+        return system
 
     def get_admin_users(self) -> list[dict[str, Any]]:
         return deepcopy(self._users)
+
+    def generate_bootstrap_state(self) -> dict[str, Any]:
+        now = datetime.now(timezone.utc)
+        scenarios = [
+            ("BOOT-9101", "Impossible travel login against payroll admin", "Critical", "Open", "Avery Collins", "TA0001 Initial Access", 0.97, 96, ["jane.carter", "acct-payroll-09", "185.193.12.44"]),
+            ("BOOT-9102", "Brute-force login attempts against branch terminal", "High", "Investigating", "Riley Grant", "TA0006 Credential Access", 0.88, 84, ["samir.khan", "teller-branch-11", "102.88.14.19"]),
+            ("BOOT-9103", "Privilege escalation attempt on domain controller", "Critical", "Escalated", "Maya Patel", "TA0004 Privilege Escalation", 0.95, 93, ["svc-payroll-admin", "dc-east-02", "10.11.4.20"]),
+            ("BOOT-9104", "Suspicious outbound transfer from ATM cluster", "Critical", "Open", "Avery Collins", "TA0010 Exfiltration", 0.93, 91, ["svc-wire-transfer", "atm-cluster-02", "185.193.12.44"]),
+            ("BOOT-9105", "Phishing lure triggered privileged attachment open", "High", "Triaged", "Jordan Lee", "TA0001 Initial Access", 0.82, 79, ["maya.patel", "mail-gateway-01", "44.213.20.77"]),
+            ("BOOT-9106", "Lateral movement chain from payroll host", "Critical", "Investigating", "Avery Collins", "TA0008 Lateral Movement", 0.9, 89, ["svc-payroll-admin", "acct-payroll-09", "dc-east-02"]),
+            ("BOOT-9107", "Suspicious URL access to credential harvesting site", "Medium", "Open", "Unassigned", "TA0001 Initial Access", 0.73, 67, ["branch.user-22", "branch-kiosk-03", "198.51.100.88"]),
+            ("BOOT-9108", "Credential exposure detected in internal paste", "High", "Investigating", "Riley Grant", "TA0006 Credential Access", 0.79, 76, ["svc-underwrite", "git-internal-01", "10.12.0.17"]),
+            ("BOOT-9109", "Prompt injection attempt against local analyst", "Medium", "Open", "Unassigned", "TA0005 Defense Evasion", 0.68, 61, ["analyst.console", "soc-console-01", "127.0.0.1"]),
+            ("BOOT-9110", "Anomalous admin action after MFA fatigue burst", "High", "Open", "Maya Patel", "TA0006 Credential Access", 0.86, 81, ["admin.ops", "iam-gateway-02", "203.0.113.41"]),
+        ]
+
+        incidents: dict[str, dict[str, Any]] = {}
+        events: list[dict[str, Any]] = []
+        nodes: list[dict[str, Any]] = []
+        edges: list[dict[str, Any]] = []
+        model_health = [
+            {"name": "UEBA Anomaly Model", "status": "Bootstrapping", "detail": "Behavioral inference warming with seeded incident state."},
+            {"name": "Attack Graph Engine", "status": "Bootstrapping", "detail": "Graph relationships primed from synthetic SOC movement."},
+            {"name": "SOC LLM Analyst", "status": "Ready", "detail": "Local reasoning ready while live mode activates."},
+            {"name": "Fraud Detector Suite", "status": "Healthy", "detail": "Email, URL, credential, attachment, and prompt guard seeded."},
+        ]
+
+        for index, (incident_id, title, severity, status, assignee, mitre_stage, anomaly_score, risk_score, entities) in enumerate(scenarios):
+            created_at = (now - timedelta(minutes=4 * index)).strftime("%Y-%m-%d %H:%M:%S")
+            user, host, ip = entities
+            timeline = [
+                {"time": (now - timedelta(minutes=4 * index + 6)).strftime("%H:%M"), "title": "Initial signal detected", "detail": f"{title} entered the SOC telemetry window."},
+                {"time": (now - timedelta(minutes=4 * index + 3)).strftime("%H:%M"), "title": "Entity correlation confirmed", "detail": f"{user} and {host} correlated through {mitre_stage}."},
+                {"time": (now - timedelta(minutes=4 * index)).strftime("%H:%M"), "title": "Incident promoted to triage", "detail": f"Risk score elevated to {risk_score} with analyst visibility."},
+            ]
+            graph_nodes = [
+                {"id": f"{incident_id}-u", "label": user, "type": "user", "risk": severity.lower(), "x": 18 + (index % 3) * 8, "y": 24 + (index % 4) * 12},
+                {"id": f"{incident_id}-h", "label": host, "type": "host", "risk": "high" if severity != "Medium" else "medium", "x": 46 + (index % 2) * 9, "y": 36 + (index % 3) * 10},
+                {"id": f"{incident_id}-i", "label": ip, "type": "ip", "risk": severity.lower(), "x": 76 - (index % 3) * 7, "y": 26 + (index % 5) * 9},
+            ]
+            graph_edges = [
+                {"from": f"{incident_id}-u", "to": f"{incident_id}-h", "label": "login_from"},
+                {"from": f"{incident_id}-h", "to": f"{incident_id}-i", "label": "connected_to"},
+            ]
+            incident = {
+                "id": incident_id,
+                "timestamp": created_at,
+                "entity": host,
+                "eventType": title,
+                "riskScore": risk_score,
+                "status": status,
+                "severity": severity,
+                "affected": f"{1 + index % 4} hosts, {1 + index % 2} users",
+                "owner": assignee,
+                "assigned_to": assignee,
+                "sla": f"{8 + index * 3}m",
+                "tactic": mitre_stage,
+                "title": title,
+                "confidence": f"{anomaly_score:.2f}",
+                "anomaly_score": anomaly_score,
+                "users": [user],
+                "hosts": [host],
+                "mitre": [mitre_stage],
+                "mitre_stage": mitre_stage,
+                "created_at": created_at,
+                "updatedAt": self._now_iso(),
+                "entities": entities,
+                "timeline": timeline,
+                "graph_nodes": graph_nodes,
+                "graph_edges": graph_edges,
+                "summary": {
+                    "id": incident_id,
+                    "title": title,
+                    "severity": severity,
+                    "confidence": f"{anomaly_score:.2f}",
+                    "status": status,
+                    "owner": assignee,
+                    "users": [user],
+                    "hosts": [host],
+                    "mitre": [mitre_stage],
+                },
+                "evidence": [
+                    {"title": "Behavioral anomaly", "content": f"{user} deviated from baseline with anomaly score {anomaly_score:.2f}."},
+                    {"title": "Risk posture", "content": f"Composite risk score is {risk_score} with {mitre_stage} mapping."},
+                    {"title": "Operational note", "content": f"{host} and {ip} remain active in the correlated chain."},
+                ],
+                "relatedAlerts": [],
+            }
+            incidents[incident_id] = incident
+            nodes.extend(graph_nodes)
+            edges.extend(graph_edges)
+
+        event_templates = [
+            "impossible_travel_login",
+            "login_failed_burst",
+            "privilege_change",
+            "data_exfiltration",
+            "phishing_detection",
+            "lateral_move",
+            "suspicious_url_access",
+            "credential_exposure",
+            "prompt_injection_attempt",
+            "unknown_device",
+        ]
+        severities = ["Critical", "High", "High", "Critical", "High", "Critical", "Medium", "High", "Medium", "Medium"]
+        sources = ["UEBA", "UEBA", "UEBA", "UEBA", "Email AI", "Attack Graph", "URL AI", "Credential AI", "Prompt Guard", "UEBA"]
+
+        incident_rows = list(incidents.values())
+        for idx in range(50):
+            incident = incident_rows[idx % len(incident_rows)]
+            event_type = event_templates[idx % len(event_templates)]
+            event = {
+                "id": f"BOOT-EVT-{4000 + idx}",
+                "incidentId": incident["id"],
+                "timestamp": (now - timedelta(minutes=idx)).strftime("%Y-%m-%d %H:%M:%S"),
+                "entity": incident["entity"],
+                "user": incident["users"][0],
+                "host": incident["hosts"][0],
+                "source": sources[idx % len(sources)],
+                "eventType": event_type,
+                "severity": severities[idx % len(severities)],
+                "score": min(99, incident["riskScore"] - (idx % 7)),
+            }
+            events.append(event)
+            incident["relatedAlerts"].append(event)
+
+        attack_graph = {
+            "nodes": nodes[:18],
+            "edges": edges[:18],
+            "chains": [
+                {"id": "BOOT-CHAIN-01", "title": "Credential misuse to privileged pivot", "severity": "Critical", "confidence": "0.95"},
+                {"id": "BOOT-CHAIN-02", "title": "Phishing to suspicious URL sequence", "severity": "High", "confidence": "0.84"},
+            ],
+            "riskLevels": [node["risk"] for node in nodes[:18]],
+        }
+
+        overview = {
+            "headline": {
+                "title": "Enterprise SOC Overview",
+                "subtitle": "Bootstrap intelligence is active while live AI mode initializes.",
+                "status": "Live mode activating",
+                "updatedAt": self._now_iso(),
+            },
+            "metrics": [
+                {"label": "Active Incidents", "value": len(incidents), "delta": "+4", "status": "critical", "helper": "Bootstrap incident queue"},
+                {"label": "Critical Incidents", "value": sum(1 for incident in incidents.values() if incident["severity"] == "Critical"), "delta": "+1", "status": "critical", "helper": "Immediate analyst attention"},
+                {"label": "MTTD", "value": "06m", "delta": "-1m", "status": "healthy", "helper": "Mean time to detect"},
+                {"label": "Detection Rate", "value": "98.2%", "delta": "+0.7%", "status": "healthy", "helper": "Seeded AI scoring coverage"},
+            ],
+            "criticalQueue": sorted(deepcopy(list(incidents.values())), key=lambda item: item["riskScore"], reverse=True)[:4],
+            "demoScenario": {
+                "title": "Hybrid bootstrap-to-live SOC transition",
+                "focusIncidentId": "BOOT-9101",
+                "summary": "Seeded incidents load instantly, then hand over to live AI-backed telemetry without page refresh.",
+            },
+            "modelHealth": model_health,
+        }
+
+        metrics = {
+            "severityDistribution": {
+                "Critical": sum(1 for item in incidents.values() if item["severity"] == "Critical"),
+                "High": sum(1 for item in incidents.values() if item["severity"] == "High"),
+                "Medium": sum(1 for item in incidents.values() if item["severity"] == "Medium"),
+                "Low": sum(1 for item in incidents.values() if item["severity"] == "Low"),
+            },
+            "recentActivity": deepcopy(events[:6]),
+            "riskDistribution": [item["riskScore"] for item in incidents.values()],
+            "spikeSummary": {
+                "label": "Bootstrap anomaly wave",
+                "window": "Last 10 minutes",
+                "detail": "Seeded UEBA, phishing, credential, and lateral movement signals are warming the console while live pipelines attach.",
+            },
+            "kpis": {"MTTD": "06m", "MTTR": "18m", "detectionRate": "98.2%"},
+        }
+
+        return {
+            "incidents": incidents,
+            "events": events,
+            "attackGraph": attack_graph,
+            "overview": overview,
+            "metrics": metrics,
+            "detections": [
+                {"id": "DET-BOOT-1", "source": "UEBA", "status": "Bootstrapping", "precision": 0.96, "drift": "Low", "lastUpdated": self._now_iso()},
+                {"id": "DET-BOOT-2", "source": "Email AI", "status": "Healthy", "precision": 0.95, "drift": "Low", "lastUpdated": self._now_iso()},
+                {"id": "DET-BOOT-3", "source": "URL AI", "status": "Healthy", "precision": 0.97, "drift": "Low", "lastUpdated": self._now_iso()},
+                {"id": "DET-BOOT-4", "source": "Credential AI", "status": "High Activity", "precision": 0.93, "drift": "Low", "lastUpdated": self._now_iso()},
+            ],
+            "modelHealth": model_health,
+            "streaming": {"counter": self._stream_counter, "mode": "bootstrap"},
+        }
+
+    def _tick_bootstrap_state(self) -> None:
+        incidents = self._bootstrap_state["incidents"]
+        if not incidents:
+            return
+        target = incidents[list(incidents.keys())[self._stream_counter % len(incidents)]]
+        if self._stream_counter % 3 == 0 and target["severity"] != "Critical":
+            target["severity"] = "Critical"
+            target["riskScore"] = min(99, target["riskScore"] + 4)
+            target["summary"]["severity"] = target["severity"]
+        else:
+            target["riskScore"] = min(99, target["riskScore"] + 1)
+        target["updatedAt"] = self._now_iso()
+        target["confidence"] = f"{min(0.99, float(target['confidence']) + 0.01):.2f}"
+        target["summary"]["confidence"] = target["confidence"]
+        event = {
+            "id": f"BOOT-EVT-{5000 + self._stream_counter}",
+            "incidentId": target["id"],
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            "entity": target["entity"],
+            "user": target["users"][0],
+            "host": target["hosts"][0],
+            "source": "UEBA" if self._stream_counter % 2 == 0 else "Attack Graph",
+            "eventType": "streamed_risk_update" if self._stream_counter % 2 == 0 else "chain_confidence_increase",
+            "severity": target["severity"],
+            "score": target["riskScore"],
+        }
+        self._bootstrap_state["events"].insert(0, event)
+        self._bootstrap_state["events"] = self._bootstrap_state["events"][:50]
+        target["relatedAlerts"].insert(0, event)
+        target["timeline"].append(
+            {
+                "time": datetime.now(timezone.utc).strftime("%H:%M"),
+                "title": "Streamed detection update",
+                "detail": f"Incident risk adjusted to {target['riskScore']} during bootstrap streaming.",
+            }
+        )
+        if self._bootstrap_state["attackGraph"]["chains"]:
+            chain = self._bootstrap_state["attackGraph"]["chains"][self._stream_counter % len(self._bootstrap_state["attackGraph"]["chains"])]
+            chain["confidence"] = f"{min(0.99, float(chain['confidence']) + 0.01):.2f}"
+            if target["severity"] == "Critical":
+                chain["severity"] = "Critical"
+        if self._bootstrap_state["attackGraph"]["nodes"]:
+            node = self._bootstrap_state["attackGraph"]["nodes"][self._stream_counter % len(self._bootstrap_state["attackGraph"]["nodes"])]
+            node["risk"] = "critical" if target["severity"] == "Critical" else node["risk"]
+        self._bootstrap_state["streaming"] = {"counter": self._stream_counter, "mode": "bootstrap"}
+        self._refresh_bootstrap_views()
+
+    def _tick_live_state(self) -> None:
+        if not self._incidents:
+            return
+        incident = self._incidents[list(self._incidents.keys())[self._stream_counter % len(self._incidents)]]
+        incident["riskScore"] = min(99, incident["riskScore"] + (1 if self._stream_counter % 4 == 0 else 0))
+        incident["updatedAt"] = self._now_iso()
+        event = {
+            "id": f"EVT-LIVE-{6000 + self._stream_counter}",
+            "incidentId": incident["id"],
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+            "entity": incident["entity"],
+            "user": incident["users"][0],
+            "host": incident["hosts"][0],
+            "source": "UEBA",
+            "eventType": "live_detection_update",
+            "severity": incident["severity"],
+            "score": incident["riskScore"],
+        }
+        self._events.insert(0, event)
+        self._events = self._events[:50]
+        if self._attack_graph["chains"]:
+            chain = self._attack_graph["chains"][self._stream_counter % len(self._attack_graph["chains"])]
+            chain["confidence"] = f"{min(0.99, float(chain['confidence']) + 0.01):.2f}"
+        self._attack_graph["riskLevels"] = [node["risk"] for node in self._attack_graph["nodes"]]
 
     def overview_mock(self) -> dict[str, Any]:
         return self.get_overview_summary()
@@ -524,6 +851,47 @@ class SOCService:
                 {"id": "AG-204", "title": "Credential misuse to exfiltration chain", "severity": "Critical", "confidence": "0.92"},
                 {"id": "AG-198", "title": "Suspicious admin token pivot", "severity": "High", "confidence": "0.81"},
             ],
+        }
+
+    def _refresh_bootstrap_views(self) -> None:
+        incidents = list(self._bootstrap_state["incidents"].values())
+        events = self._bootstrap_state["events"]
+        self._bootstrap_state["overview"] = {
+            "headline": {
+                "title": "Enterprise SOC Overview",
+                "subtitle": "Bootstrap intelligence is active while live AI mode initializes.",
+                "status": "Live mode activating",
+                "updatedAt": self._now_iso(),
+            },
+            "metrics": [
+                {"label": "Active Incidents", "value": len(incidents), "delta": "+4", "status": "critical", "helper": "Bootstrap incident queue"},
+                {"label": "Critical Incidents", "value": sum(1 for incident in incidents if incident["severity"] == "Critical"), "delta": "+1", "status": "critical", "helper": "Immediate analyst attention"},
+                {"label": "MTTD", "value": "06m", "delta": "-1m", "status": "healthy", "helper": "Mean time to detect"},
+                {"label": "Detection Rate", "value": "98.2%", "delta": "+0.7%", "status": "healthy", "helper": "Seeded AI scoring coverage"},
+            ],
+            "criticalQueue": sorted(deepcopy(incidents), key=lambda item: item["riskScore"], reverse=True)[:4],
+            "demoScenario": {
+                "title": "Hybrid bootstrap-to-live SOC transition",
+                "focusIncidentId": sorted(incidents, key=lambda item: item["riskScore"], reverse=True)[0]["id"] if incidents else "BOOT-9101",
+                "summary": "Seeded incidents load instantly, then hand over to live AI-backed telemetry without page refresh.",
+            },
+            "modelHealth": self._bootstrap_state["modelHealth"],
+        }
+        self._bootstrap_state["metrics"] = {
+            "severityDistribution": {
+                "Critical": sum(1 for item in incidents if item["severity"] == "Critical"),
+                "High": sum(1 for item in incidents if item["severity"] == "High"),
+                "Medium": sum(1 for item in incidents if item["severity"] == "Medium"),
+                "Low": sum(1 for item in incidents if item["severity"] == "Low"),
+            },
+            "recentActivity": deepcopy(events[:6]),
+            "riskDistribution": [item["riskScore"] for item in incidents],
+            "spikeSummary": {
+                "label": "Bootstrap anomaly wave",
+                "window": "Last 10 minutes",
+                "detail": "Seeded UEBA, phishing, credential, and lateral movement signals are warming the console while live pipelines attach.",
+            },
+            "kpis": {"MTTD": "06m", "MTTR": "18m", "detectionRate": "98.2%"},
         }
 
     def _build_incident_timeline(self, incident_id: str) -> list[dict[str, Any]]:

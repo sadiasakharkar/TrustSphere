@@ -29,7 +29,7 @@ export default function IncidentsPage() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    const load = async () => {
       try {
         const queue = await getTriageQueue();
         if (!active) return;
@@ -44,9 +44,12 @@ export default function IncidentsPage() {
       } catch (err) {
         if (active) setError(err.message || 'Unable to load incidents.');
       }
-    })();
+    };
+    load();
+    const interval = window.setInterval(load, 2000);
     return () => {
       active = false;
+      window.clearInterval(interval);
     };
   }, []);
 

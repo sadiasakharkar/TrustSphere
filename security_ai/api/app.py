@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -351,11 +352,21 @@ if FastAPI is not None:
             LOGGER.warning("Model registry bootstrap failed; continuing in resilient mode: %s", exc)
         for detector in ["email", "url", "credential", "attachment", "prompt_guard"]:
             record_model_snapshot(MetricsSnapshot(detector=detector))
+        app.state.bootstrap_transition_task = asyncio.create_task(soc_service.activate_bootstrap_transition())
+        app.state.streaming_task = asyncio.create_task(soc_service.run_streaming_updates())
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
         return build_success_payload(
-            data={"status": "ok", "service": "trustsphere-security-platform", "async_inference": True, "offline_capable": True}
+            data={
+                "status": "ok",
+                "service": "trustsphere-security-platform",
+                "async_inference": True,
+                "offline_capable": True,
+                "mode": soc_service.response_meta()["mode"],
+                "bootstrapMode": soc_service.response_meta()["bootstrapMode"],
+                "streamCounter": soc_service.response_meta()["streamCounter"],
+            }
         )
 
     @app.get("/metrics")
@@ -395,33 +406,33 @@ if FastAPI is not None:
 
     @app.get("/api/overview/summary")
     async def overview_summary():
-        return success_response(soc_service.get_overview_summary())
+        return success_response(soc_service.get_overview_summary(), meta=soc_service.response_meta())
 
     @app.get("/api/metrics/soc")
     async def soc_metrics():
-        return success_response(soc_service.get_soc_metrics())
+        return success_response(soc_service.get_soc_metrics(), meta=soc_service.response_meta())
 
     @app.get("/api/events/live")
     async def live_events():
         events = soc_service.get_live_events()
-        return success_response(events, meta={"count": len(events)})
+        return success_response(events, meta={"count": len(events), **soc_service.response_meta()})
 
     @app.get("/api/detections/feed")
     async def detections_feed():
         feed = soc_service.get_detection_feed()
-        return success_response(feed, meta={"count": len(feed)})
+        return success_response(feed, meta={"count": len(feed), **soc_service.response_meta()})
 
     @app.get("/api/incidents")
     async def incidents():
         rows = soc_service.list_incidents()
-        return success_response(rows, meta={"count": len(rows)})
+        return success_response(rows, meta={"count": len(rows), **soc_service.response_meta()})
 
     @app.get("/api/incidents/{incident_id}")
     async def incident_detail(incident_id: str):
         incident = soc_service.get_incident(incident_id)
         if incident is None:
-            return success_response(soc_service.incident_detail_mock(incident_id), meta={"incidentId": incident_id, "fallback": True})
-        return success_response(incident)
+            return success_response(soc_service.incident_detail_mock(incident_id), meta={"incidentId": incident_id, "fallback": True, **soc_service.response_meta()})
+        return success_response(incident, meta=soc_service.response_meta())
 
     @app.patch("/api/incidents/{incident_id}/status")
     async def update_incident_status(incident_id: str, request: IncidentStatusUpdateRequest):
@@ -448,11 +459,11 @@ if FastAPI is not None:
 
     @app.get("/api/attack-graph")
     async def attack_graph():
-        return success_response(soc_service.get_attack_graph())
+        return success_response(soc_service.get_attack_graph(), meta=soc_service.response_meta())
 
     @app.get("/api/attack-graph/{incident_id}")
     async def incident_attack_graph(incident_id: str):
-        return success_response(soc_service.get_attack_graph(incident_id=incident_id))
+        return success_response(soc_service.get_attack_graph(incident_id=incident_id), meta=soc_service.response_meta())
 
     @app.get("/api/playbooks")
     async def playbooks():
