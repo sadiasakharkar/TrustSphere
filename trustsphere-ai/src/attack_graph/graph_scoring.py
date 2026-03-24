@@ -1,4 +1,4 @@
-"""Risk scoring for TrustSphere attack graphs."""
+"""Graph scoring for TrustSphere SOC attack graph analytics."""
 
 from __future__ import annotations
 
@@ -9,98 +9,88 @@ from typing import Any
 
 import networkx as nx
 import numpy as np
+import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
-RISK_LEVEL_SCORE = {"LOW": 0.25, "MEDIUM": 0.5, "HIGH": 0.75, "CRITICAL": 1.0}
-MITRE_STAGE_WEIGHT = {
-    "TA0001": 1.1,
-    "TA0003": 1.0,
-    "TA0004": 1.25,
-    "TA0006": 1.1,
-    "TA0008": 1.35,
-    "TA0009": 1.15,
-    "TA0010": 1.4,
-    "Unknown": 0.9,
-}
 
 
 class GraphRiskScorer:
-    """Compute node and chain risk from graph structure and UEBA signals."""
+    """Compute node and chain risk using graph analytics and anomaly density."""
 
-    def __init__(self, ueba_risk_weight: float = 1.15) -> None:
-        self.ueba_risk_weight = ueba_risk_weight
-
-    def score_graph(self, graph: nx.DiGraph, chains: list[dict[str, Any]]) -> dict[str, Any]:
-        event_nodes = [node for node, attrs in graph.nodes(data=True) if attrs.get("node_type") == "event"]
-        degree = nx.degree_centrality(graph)
-        betweenness = nx.betweenness_centrality(graph)
-        pagerank = nx.pagerank(graph) if graph.number_of_nodes() else {}
+    def score_graph(self, graph: nx.MultiDiGraph, chains: list[dict[str, Any]]) -> dict[str, Any]:
+        simple_graph = nx.DiGraph()
+        for source, target, attrs in graph.edges(data=True):
+            weight = float(attrs.get("confidence_score", 1.0))
+            if simple_graph.has_edge(source, target):
+                simple_graph[source][target]["weight"] = max(simple_graph[source][target]["weight"], weight)
+            else:
+                simple_graph.add_edge(source, target, weight=weight)
+        pagerank = nx.pagerank(simple_graph, weight="weight") if simple_graph.number_of_nodes() else {}
+        betweenness = nx.betweenness_centrality(simple_graph, weight="weight") if simple_graph.number_of_nodes() else {}
 
         node_scores: list[dict[str, Any]] = []
-        for node in event_nodes:
-            attrs = graph.nodes[node]
-            centrality = float(np.mean([degree.get(node, 0.0), betweenness.get(node, 0.0), pagerank.get(node, 0.0)]))
-            base_risk = float(attrs.get("anomaly_score", 0.0)) * 100.0
-            risk_weight = RISK_LEVEL_SCORE.get(str(attrs.get("risk_level", "LOW")).upper(), 0.25)
-            node_risk = min(100.0, base_risk * self.ueba_risk_weight * max(0.2, centrality + risk_weight))
+        for node, attrs in graph.nodes(data=True):
+            if attrs.get("node_type") != "alert":
+                continue
+            anomaly_component = float(attrs.get("anomaly_score", 0.0)) * 100.0
+            centrality_score = 50.0 * float(np.mean([pagerank.get(node, 0.0), betweenness.get(node, 0.0)]))
+            node_risk = anomaly_component + centrality_score
             attrs["node_risk"] = round(node_risk, 2)
-            attrs["centrality"] = round(centrality, 4)
             node_scores.append(
                 {
                     "node_id": node,
                     "event_id": attrs.get("event_id"),
                     "event_type": attrs.get("event_type"),
                     "risk_level": attrs.get("risk_level"),
-                    "node_risk": attrs["node_risk"],
-                    "centrality": attrs["centrality"],
+                    "node_risk": attrs.get("node_risk"),
+                    "centrality_score": round(centrality_score, 4),
                 }
             )
 
-        chain_scores = self._score_chains(graph, chains)
-        summary = {
+        chain_scores = []
+        for chain in chains:
+            node_risks = [float(graph.nodes[event["node_id"]].get("node_risk", 0.0)) for event in chain.get("sequence_of_events", [])]
+            path_length_weight = 5.0 * max(0, chain.get("path_length", 1) - 1)
+            anomaly_density = 100.0 * float(chain.get("anomaly_density", 0.0))
+            centrality_score = float(np.mean([pagerank.get(event["node_id"], 0.0) + betweenness.get(event["node_id"], 0.0) for event in chain.get("sequence_of_events", [])])) * 50.0 if chain.get("sequence_of_events") else 0.0
+            risk_score = float(np.mean(node_risks)) + path_length_weight + anomaly_density + centrality_score if node_risks else 0.0
+            chain_scores.append(
+                {
+                    "attack_chain_id": chain.get("attack_chain_id"),
+                    "risk_score": round(risk_score, 2),
+                    "severity": self._severity(risk_score),
+                    **chain,
+                }
+            )
+        return {
             "node_scores": node_scores,
             "chain_scores": chain_scores,
-            "critical_chains": sum(1 for chain in chain_scores if chain["severity_level"] == "CRITICAL"),
+            "critical_chains": sum(1 for chain in chain_scores if chain["severity"] == "CRITICAL"),
         }
-        return summary
 
     def export_scores(self, payload: dict[str, Any], output_path: Path) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         LOGGER.info("Graph risk scores exported to %s", output_path)
 
-    def _score_chains(self, graph: nx.DiGraph, chains: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        results: list[dict[str, Any]] = []
-        for chain in chains:
-            node_risks = []
-            stage_weights = []
-            for event in chain.get("events", []):
-                attrs = graph.nodes.get(event["node_id"], {})
-                node_risks.append(float(attrs.get("node_risk", 0.0)))
-                stage_weights.append(MITRE_STAGE_WEIGHT.get(attrs.get("mitre_stage", "Unknown"), 0.9))
-            avg_node_risk = float(np.mean(node_risks)) if node_risks else 0.0
-            avg_stage_weight = float(np.mean(stage_weights)) if stage_weights else 0.9
-            chain_length = max(1, len(chain.get("events", [])))
-            severity_score = min(100.0, avg_node_risk * (chain_length / 3.0) * avg_stage_weight)
-            results.append(
-                {
-                    "chain_id": chain.get("chain_id"),
-                    "severity_score": round(severity_score, 2),
-                    "severity_level": self._to_severity_label(severity_score),
-                    "chain_confidence": chain.get("chain_confidence", 0.0),
-                    "events": chain.get("events", []),
-                    "mitre_stage": chain.get("mitre_stage", []),
-                    "why_linked": chain.get("why_linked", []),
-                    "risk_reason": chain.get("risk_reason", []),
-                }
-            )
-        return results
+    def export_high_risk_chains(self, payload: dict[str, Any], output_path: Path) -> Path:
+        frame = pd.DataFrame(payload.get("chain_scores", []))
+        if not frame.empty:
+            frame = frame[frame["risk_score"] >= frame["risk_score"].median()].copy()
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            frame.to_parquet(output_path, index=False)
+        except Exception as exc:
+            fallback = output_path.with_suffix(".csv")
+            frame.to_csv(fallback, index=False)
+            LOGGER.warning("Parquet export failed for %s (%s). Wrote CSV fallback to %s", output_path, exc, fallback)
+        return output_path
 
-    def _to_severity_label(self, score: float) -> str:
-        if score >= 80:
+    def _severity(self, score: float) -> str:
+        if score >= 150:
             return "CRITICAL"
-        if score >= 60:
+        if score >= 100:
             return "HIGH"
-        if score >= 30:
+        if score >= 50:
             return "MEDIUM"
         return "LOW"
