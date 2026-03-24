@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import GraphPanel from '../../components/soc/GraphPanel';
 import Layout from '../../components/Layout';
 import RequireAuth from '../../components/RequireAuth';
@@ -26,6 +26,7 @@ export default function IncidentDetailPage() {
   const [playbooks, setPlaybooks] = useState([]);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     if (!router.query.id) return;
@@ -41,10 +42,12 @@ export default function IncidentDetailPage() {
         setData(incident);
         setGraph(incidentGraph);
         setPlaybooks(availablePlaybooks?.playbooks || []);
+        hasLoadedRef.current = true;
+        setError('');
         const summary = await getIncidentInsight(router.query.id);
         if (active) setInsight(summary);
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load incident workspace.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load incident workspace.');
       }
     };
     load();

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import GraphPanel from '../components/soc/GraphPanel';
@@ -15,6 +15,7 @@ export default function ThreatGraphPage() {
   const [data, setData] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -23,11 +24,13 @@ export default function ThreatGraphPage() {
         const graph = await getThreatGraph();
         if (active) {
           setData(graph);
+          hasLoadedRef.current = true;
+          setError('');
           const workflow = await getWorkflowInsight('threat-graph');
           if (active) setInsight(workflow);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load attack graph.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load attack graph.');
       }
     };
     load();

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
@@ -33,6 +33,7 @@ export default function OverviewPage() {
   const [focusIncident, setFocusIncident] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +42,8 @@ export default function OverviewPage() {
         const summary = await getOverviewSummary();
         if (!active) return;
         setData(summary);
+        hasLoadedRef.current = true;
+        setError('');
         const overviewInsight = await getWorkflowInsight('overview');
         if (active) setInsight(overviewInsight);
         const primary = summary?.criticalQueue?.[0]?.id;
@@ -49,7 +52,7 @@ export default function OverviewPage() {
           if (active) setFocusIncident(detail);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load overview data.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load overview data.');
       }
     };
     load();

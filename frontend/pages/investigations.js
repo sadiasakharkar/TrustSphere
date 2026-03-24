@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
@@ -23,6 +23,7 @@ export default function InvestigationsPage() {
   const [data, setData] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -31,11 +32,13 @@ export default function InvestigationsPage() {
         const workspace = await getInvestigationWorkspace();
         if (active) {
           setData(workspace);
+          hasLoadedRef.current = true;
+          setError('');
           const workflow = await getWorkflowInsight('investigations');
           if (active) setInsight(workflow);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load investigations.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load investigations.');
       }
     })();
     return () => {

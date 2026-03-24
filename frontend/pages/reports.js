@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
@@ -24,6 +24,7 @@ export default function ReportsPage() {
   const [exportState, setExportState] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -32,11 +33,13 @@ export default function ReportsPage() {
         const response = await getReportsWorkspace();
         if (active) {
           setData(response);
+          hasLoadedRef.current = true;
+          setError('');
           const workflow = await getWorkflowInsight('reports');
           if (active) setInsight(workflow);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load reports.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load reports.');
       }
     })();
     return () => {

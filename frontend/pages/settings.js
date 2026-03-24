@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import EmptyState from '../components/soc/EmptyState';
@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
   const { isAdmin, session } = useAuth();
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -23,11 +24,13 @@ export default function SettingsPage() {
         const workspace = await getAdministrationWorkspace();
         if (active) {
           setData(workspace);
+          hasLoadedRef.current = true;
+          setError('');
           const workflow = await getWorkflowInsight('settings');
           if (active) setInsight(workflow);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load administration data.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load administration data.');
       }
     })();
     return () => {

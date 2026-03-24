@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import EmptyState from '../components/soc/EmptyState';
@@ -16,6 +16,7 @@ export default function PlaybooksPage() {
   const [execution, setExecution] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -24,11 +25,13 @@ export default function PlaybooksPage() {
         const response = await getPlaybooks();
         if (active) {
           setData(response.playbooks || []);
+          hasLoadedRef.current = true;
+          setError('');
           const workflow = await getWorkflowInsight('playbooks');
           if (active) setInsight(workflow);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load playbooks.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load playbooks.');
       }
     })();
     return () => {

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
@@ -26,6 +26,7 @@ export default function IncidentsPage() {
   const [focusIncident, setFocusIncident] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -34,6 +35,8 @@ export default function IncidentsPage() {
         const queue = await getTriageQueue();
         if (!active) return;
         setData(queue);
+        hasLoadedRef.current = true;
+        setError('');
         const workflow = await getWorkflowInsight('incidents', queue?.queue?.[0]?.id);
         if (active) setInsight(workflow);
         const firstId = queue?.queue?.[0]?.id;
@@ -42,7 +45,7 @@ export default function IncidentsPage() {
           if (active) setFocusIncident(detail);
         }
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load incidents.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load incidents.');
       }
     };
     load();

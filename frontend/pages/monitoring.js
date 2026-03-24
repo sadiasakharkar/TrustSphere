@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
@@ -27,6 +27,7 @@ export default function MonitoringPage() {
   const [metrics, setMetrics] = useState(null);
   const [insight, setInsight] = useState(null);
   const [error, setError] = useState('');
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -41,10 +42,12 @@ export default function MonitoringPage() {
         setEvents(eventResponse.events);
         setDetectors(detectionResponse.detectors);
         setMetrics(metricsResponse);
+        hasLoadedRef.current = true;
+        setError('');
         const workflow = await getWorkflowInsight('monitoring');
         if (active) setInsight(workflow);
       } catch (err) {
-        if (active) setError(err.message || 'Unable to load monitoring feed.');
+        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load monitoring feed.');
       }
     };
     load();
