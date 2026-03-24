@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
+import sys
 import time
 from typing import Any
 
@@ -22,6 +24,13 @@ from security_ai.api.model_loader import ModelLoader
 from security_ai.api.services import DetectorService
 from security_ai.monitoring.metrics import MetricsSnapshot, REQUEST_COUNTER, REQUEST_LATENCY, metrics_payload, record_model_snapshot
 from security_ai.registry.mlflow_registry import MLflowRegistry
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+TRUSTSPHERE_AI_DIR = BASE_DIR / "trustsphere-ai"
+if str(TRUSTSPHERE_AI_DIR) not in sys.path:
+    sys.path.insert(0, str(TRUSTSPHERE_AI_DIR))
+
+from src.pipeline.contracts import IncidentReport, NormalizedLog
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,11 +62,7 @@ class AttachmentDetectionRequest(BaseModel):
 
 
 class IncidentAnalysisRequest(BaseModel):
-    summary: str = Field(default="")
-    severity: str = Field(default="LOW")
-    indicators: list[str] = Field(default_factory=list)
-    evidence: list[str] = Field(default_factory=list)
-    logs: list[dict[str, Any]] = Field(default_factory=list)
+    logs: list[NormalizedLog] = Field(default_factory=list)
 
 
 class PromptGuardRequest(BaseModel):
@@ -129,7 +134,7 @@ if FastAPI is not None:
         return await services.guard_prompt(request.model_dump())
 
     @app.post("/analyze/incident")
-    async def analyze_incident(request: IncidentAnalysisRequest):
+    async def analyze_incident(request: IncidentAnalysisRequest) -> IncidentReport:
         return await services.analyze_incident(request.model_dump())
 else:
     app = None

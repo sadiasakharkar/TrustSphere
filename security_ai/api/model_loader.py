@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from pathlib import Path
+import sys
 from typing import Any
 
 from security_ai.detect_credentials import CredentialExposurePredictor
@@ -12,6 +13,11 @@ from security_ai.predict_attachment import AttachmentPredictor
 from security_ai.predict_email import EmailPredictor
 from security_ai.predict_url import URLPhishingPredictor
 from security_ai.prompt_guard import PromptInjectionGuard
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+TRUSTSPHERE_AI_DIR = BASE_DIR / "trustsphere-ai"
+if str(TRUSTSPHERE_AI_DIR) not in sys.path:
+    sys.path.insert(0, str(TRUSTSPHERE_AI_DIR))
 
 
 class ModelLoader:
@@ -59,6 +65,14 @@ class ModelLoader:
 
     def load_soc_analyst(self) -> dict[str, Any]:
         return self._get_or_create("soc_analyst", lambda: {"status": "available"})
+
+    def load_trustsphere_pipeline(self):
+        def factory():
+            from src.pipeline.trustsphere_pipeline import TrustSpherePipeline
+
+            return TrustSpherePipeline(TRUSTSPHERE_AI_DIR)
+
+        return self._get_or_create("trustsphere_pipeline", factory)
 
     def warmup(self) -> None:
         self.load_email_model()
