@@ -34,6 +34,7 @@ export default function EmailPage() {
       const inbox = await getInboxEmails();
       setEmails(inbox);
       setSelectedEmail((current) => current || inbox[0] || null);
+      setError('');
     } catch (err) {
       setError(err.message || 'Unable to load inbox.');
     }
@@ -43,6 +44,7 @@ export default function EmailPage() {
     try {
       const entries = await getEmailHistory();
       setHistory(mapHistory(entries));
+      setError('');
     } catch (err) {
       setError(err.message || 'Unable to load email history.');
     }

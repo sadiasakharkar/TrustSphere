@@ -79,35 +79,52 @@ function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }
 }
 
 export async function analyzeEmail(input, meta = {}) {
-  const { data } = await apiRequest('/api/email/analyze', {
-    method: 'POST',
-    body: JSON.stringify({ input, subject: meta.subject || '', sender: meta.sender || 'unknown@example.com' }),
-    fallbackData: () => fallbackAnalyze({ input, subject: meta.subject, sender: meta.sender }),
-  });
-  return data;
+  try {
+    const { data } = await apiRequest('/api/email/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ input, subject: meta.subject || '', sender: meta.sender || 'unknown@example.com' }),
+      fallbackData: () => fallbackAnalyze({ input, subject: meta.subject, sender: meta.sender }),
+    });
+    return data;
+  } catch {
+    return fallbackAnalyze({ input, subject: meta.subject, sender: meta.sender });
+  }
 }
 
 export async function getInboxEmails() {
-  const { data } = await apiRequest('/api/email/inbox', {
-    fallbackData: FALLBACK_INBOX,
-  });
-  return data;
+  try {
+    const { data } = await apiRequest('/api/email/inbox', {
+      fallbackData: FALLBACK_INBOX,
+    });
+    return data;
+  } catch {
+    return FALLBACK_INBOX;
+  }
 }
 
 export async function getEmailHistory() {
-  const { data } = await apiRequest('/api/email/history', {
-    fallbackData: () => [...readFallbackHistory()].reverse(),
-  });
-  return data;
+  try {
+    const { data } = await apiRequest('/api/email/history', {
+      fallbackData: () => [...readFallbackHistory()].reverse(),
+    });
+    return data;
+  } catch {
+    return [...readFallbackHistory()].reverse();
+  }
 }
 
 export async function clearEmailHistory() {
-  const { data } = await apiRequest('/api/email/history', {
-    method: 'DELETE',
-    fallbackData: () => {
-      writeFallbackHistory([]);
-      return { status: 'cleared' };
-    },
-  });
-  return data;
+  try {
+    const { data } = await apiRequest('/api/email/history', {
+      method: 'DELETE',
+      fallbackData: () => {
+        writeFallbackHistory([]);
+        return { status: 'cleared' };
+      },
+    });
+    return data;
+  } catch {
+    writeFallbackHistory([]);
+    return { status: 'cleared' };
+  }
 }
