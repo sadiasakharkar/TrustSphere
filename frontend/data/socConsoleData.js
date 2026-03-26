@@ -69,7 +69,41 @@ export const incidentWorkspace = {
     { title: 'Behavioral deviation', content: 'After-hours activity ratio increased 4.6x above baseline for jane.carter.' },
     { title: 'Credential risk', content: 'Failed login burst followed by success from new device fingerprint.' },
     { title: 'Graph correlation', content: 'Attack chain intersects payroll segment and privileged admin assets.' }
-  ]
+  ],
+  emailEvidence: {
+    subject: 'Action required: payroll verification before 10:00 UTC',
+    from: 'Payroll Security <payroll-security@secure-payroll-alerts.com>',
+    to: 'jane.carter@trustsphere.local',
+    replyTo: 'hr-processing@external-review.net',
+    timestamp: '2026-03-24 02:11:43 UTC',
+    verdict: 'Likely phishing',
+    phishingScore: 94,
+    severity: 'High',
+    confidence: '0.96',
+    spf: 'Fail',
+    dkim: 'Fail',
+    dmarc: 'Fail',
+    bodySnippet: 'We detected a mismatch in your payroll profile. Re-validate your credentials immediately to avoid delayed salary processing.',
+    indicators: [
+      'Reply-To domain differs from sender domain.',
+      'Urgent credential request tied to payroll disruption.',
+      'Sender domain is newly observed in the environment.'
+    ],
+    urls: [
+      'hxxps://secure-payroll-alerts.com/verify',
+      'hxxps://bit.ly/3-payroll-check'
+    ],
+    attachments: [
+      'Payroll_Adjustment_Form.zip'
+    ],
+    aiSummary: 'Authentication checks failed and the message uses payroll urgency plus credential collection language consistent with phishing.',
+    actions: [
+      'Quarantine email',
+      'Block sender domain',
+      'Notify recipient',
+      'Search for similar messages'
+    ]
+  }
 };
 
 export const investigationWorkspace = {
