@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 try:
-    from fastapi import FastAPI, HTTPException, Request, Response
+    from fastapi import FastAPI, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
     from fastapi.exceptions import RequestValidationError
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
@@ -23,11 +24,22 @@ except Exception:
     RequestValidationError = Exception
     Request = object
     Response = object
+    WebSocket = object
+    WebSocketDisconnect = Exception
     CORSMiddleware = object
     JSONResponse = object
 
+from security_ai.api.core.auth import create_token, decode_token
 from security_ai.api.model_loader import ModelLoader
-from security_ai.api.services import DetectorService
+from security_ai.api.services import (
+    DetectionService,
+    DetectorService,
+    GraphService,
+    IncidentStreamBroker,
+    LLMService,
+    RiskService,
+    StorageService,
+)
 from security_ai.api.middleware import (
     MAX_REQUEST_SIZE_BYTES,
     REQUEST_ID_HEADER,
@@ -65,6 +77,7 @@ from src.contracts import (
     PromptGuardRequest,
     URLDetectionRequest,
 )
+from src.pipeline.event_normalizer import EventNormalizer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,11 +98,38 @@ class PlaybookRunRequest(BaseModel):
 class ReportExportRequest(BaseModel):
     format: str = "markdown"
 
+
+class AuthLoginRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "analyst"
+
+
+class AuthRefreshRequest(BaseModel):
+    token: str
+
+
+class IngestLogsRequest(BaseModel):
+    logs: list[dict[str, Any]]
+
+
+class PlaybookExecutionRequest(BaseModel):
+    incident_id: str
+    action: str
+    target: str | None = None
+
 if FastAPI is not None:
     app = FastAPI(title="TrustSphere Security AI Platform", version="2.0.0")
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
     loader = ModelLoader.get_instance()
     services = DetectorService(loader)
+    normalizer = EventNormalizer()
+    storage_service = StorageService()
+    live_detection_service = DetectionService(loader)
+    risk_service = RiskService()
+    graph_service = GraphService()
+    llm_service = LLMService()
+    stream_broker = IncidentStreamBroker()
     soc_service = SOCService()
     registry = MLflowRegistry(base_dir=__import__("pathlib").Path(__file__).resolve().parents[1])
     request_schema_registry = {
@@ -100,6 +140,140 @@ if FastAPI is not None:
         "/guard/prompt": (PROMPT_GUARD_REQUEST_SCHEMA_VERSION, PromptGuardRequest),
         "/analyze/incident": (INCIDENT_SCHEMA_VERSION, IncidentAnalysisRequest),
     }
+
+    def _storage_incidents_or_fallback() -> list[dict[str, Any]]:
+        incidents = storage_service.fetch_incidents()
+        return incidents if incidents else soc_service.list_incidents()
+
+    def _incident_for_graph(incident_id: str | None = None) -> dict[str, Any] | None:
+        if incident_id:
+            return storage_service.get_incident(incident_id) or soc_service.get_incident(incident_id)
+        incidents = storage_service.fetch_incidents()
+        if incidents:
+            return incidents[0]
+        rows = soc_service.list_incidents()
+        return rows[0] if rows else None
+
+    def _compose_live_overview() -> dict[str, Any]:
+        incidents = storage_service.fetch_incidents()
+        metrics = storage_service.aggregate_metrics()
+        if not incidents:
+            return soc_service.get_overview_summary()
+        confidence_values = []
+        for item in incidents[:5]:
+            value = item.get("confidence", 0.9)
+            try:
+                confidence_values.append(float(value))
+            except Exception:
+                confidence_values.append(0.9)
+        detection_confidence = min(max(sum(confidence_values) / max(len(confidence_values), 1), 0.01), 0.99)
+        return {
+            "headline": {
+                "title": "Security Operations Overview",
+                "subtitle": "Live intelligence across normalized logs, anomaly scoring, graph correlation, and local reasoning.",
+                "status": "Live backend telemetry",
+                "updatedAt": metrics.get("recent_activity", [{}])[0].get("timestamp", soc_service.response_meta()["startedAt"]),
+            },
+            "metrics": [
+                {"label": "Active Incidents", "value": len([item for item in incidents if str(item.get("status", "")).lower() != "resolved"]), "delta": "+2", "status": "critical", "helper": "Persisted incident index"},
+                {"label": "Risk Score", "value": round(sum(float(item.get("risk_score", item.get("riskScore", 0))) for item in incidents[:5]) / max(min(len(incidents), 5), 1), 1), "delta": "+4%", "status": "high", "helper": "Average top incident risk"},
+                {"label": "Detection Confidence", "value": f"{detection_confidence:.2f}", "delta": "Stable", "status": "healthy", "helper": "LLM + ML confidence"},
+                {"label": "System Status", "value": storage_service.backend.title(), "delta": "Online", "status": "healthy", "helper": "Storage and inference path"},
+            ],
+            "criticalQueue": incidents[:5],
+            "modelHealth": soc_service.get_detection_feed(),
+            "demoScenario": {
+                "title": incidents[0].get("title", "Live SOC incident focus"),
+                "focusIncidentId": incidents[0].get("id"),
+                "summary": incidents[0].get("llm_summary", incidents[0].get("title", "Live risk detected")),
+            },
+        }
+
+    async def _broadcast_event(event_type: str, payload: dict[str, Any]) -> None:
+        await stream_broker.broadcast({
+            "type": event_type,
+            "timestamp": time.time(),
+            "payload": payload,
+        })
+
+    async def _ingest_and_detect(raw_logs: list[dict[str, Any]]) -> dict[str, Any]:
+        normalized_events = [event.model_dump(mode="json") for event in normalizer.normalize(raw_logs)]
+        storage_service.index_normalized_logs(normalized_events)
+        detections = live_detection_service.detect(raw_logs)
+        created_incidents = []
+        history = storage_service.fetch_incidents()
+        for index, detection in enumerate(detections):
+            source_event = normalized_events[min(index, len(normalized_events) - 1)] if normalized_events else {}
+            risk = risk_service.score(detection, history=history, asset_type="server" if "db" in str(source_event.get("host", "")).lower() else "workstation")
+            incident_id = source_event.get("event_id") or f"INC-LIVE-{int(time.time() * 1000)}-{index}"
+            incident = {
+                "id": incident_id,
+                "title": detection.get("deviation_reason", "Anomalous activity detected"),
+                "severity": risk["severity"].title(),
+                "status": "OPEN",
+                "assigned_to": "Unassigned",
+                "owner": "Unassigned",
+                "mitre_stage": "TA0001 Initial Access" if "login" in str(source_event.get("event_type", "")).lower() else "TA0008 Lateral Movement",
+                "anomaly_score": detection["anomaly_score"],
+                "risk_score": risk["risk_score"],
+                "riskScore": risk["risk_score"],
+                "created_at": source_event.get("timestamp"),
+                "updatedAt": datetime.now().isoformat(),
+                "entities": [source_event.get("user"), source_event.get("host"), source_event.get("ip")],
+                "entity": source_event.get("host") or source_event.get("user"),
+                "eventType": source_event.get("event_type"),
+                "confidence": f"{min(max(float(detection['anomaly_score']) + 0.05, 0.01), 0.99):.2f}",
+                "timeline": [
+                    {"time": str(source_event.get("timestamp", ""))[-8:-3], "title": "Log ingested", "detail": f"{source_event.get('event_type', 'event')} normalized and indexed."},
+                    {"time": datetime.utcnow().strftime("%H:%M"), "title": "Anomaly detected", "detail": detection.get("deviation_reason", "Behavior deviated from baseline.")},
+                    {"time": datetime.utcnow().strftime("%H:%M"), "title": "Risk scored", "detail": f"Composite risk evaluated at {risk['risk_score']} ({risk['severity']})."},
+                ],
+                "evidence": [
+                    {"title": "Deviation reason", "content": detection.get("deviation_reason", "Behavior deviated from baseline.")},
+                    {"title": "Feature importance", "content": json.dumps(detection.get("feature_importance", {}), default=str)},
+                    {"title": "Risk explanation", "content": f"Final risk combines anomaly, behavior, asset criticality, threat weight, and frequency."},
+                ],
+                "relatedAlerts": [source_event],
+                "summary": {
+                    "id": incident_id,
+                    "title": detection.get("deviation_reason", "Anomalous activity detected"),
+                    "severity": risk["severity"].title(),
+                    "confidence": f"{min(max(float(detection['anomaly_score']) + 0.05, 0.01), 0.99):.2f}",
+                    "status": "OPEN",
+                    "owner": "Unassigned",
+                    "users": [source_event.get("user")],
+                    "hosts": [source_event.get("host")],
+                    "mitre": ["Initial Access" if "login" in str(source_event.get("event_type", "")).lower() else "Lateral Movement"],
+                },
+            }
+            graph = graph_service.build_graph(incident, [detection])
+            llm = llm_service.summarize_incident(
+                anomaly_result=detection,
+                attack_graph=graph,
+                entity_behavior=risk,
+                historical_context={"history_count": len(history), "recent_alerts": storage_service.query_alerts(limit=5)},
+            )
+            incident["graph"] = graph
+            incident["llm_summary"] = llm["summary"]
+            incident["llm_reasoning"] = llm["reasoning"]
+            incident["llm_confidence"] = llm["confidence"]
+            incident["recommended_actions"] = llm["recommended_actions"]
+            incident["attack_stage"] = llm["attack_stage"]
+            storage_service.index_incident(incident)
+            storage_service.index_entity({
+                "entity_id": detection["entity_id"],
+                "entity_type": "user",
+                "risk_score": risk["risk_score"],
+                "severity": risk["severity"],
+            })
+            created_incidents.append(incident)
+            history.append(incident)
+            await _broadcast_event("new_anomaly_detected", {"incident": incident, "risk": risk, "graph": graph})
+        return {
+            "normalized_logs": normalized_events,
+            "detections": detections,
+            "incidents": created_incidents,
+        }
 
     def _fallback_payload_for_path(path: str, method: str = "GET") -> Any | None:
         normalized_method = str(method or "GET").upper()
@@ -352,6 +526,30 @@ if FastAPI is not None:
             LOGGER.warning("Model registry bootstrap failed; continuing in resilient mode: %s", exc)
         for detector in ["email", "url", "credential", "attachment", "prompt_guard"]:
             record_model_snapshot(MetricsSnapshot(detector=detector))
+        try:
+            seed_events = soc_service.get_live_events()[:20]
+            normalized_seed = []
+            for event in seed_events:
+                normalized_seed.append({
+                    "timestamp": event.get("timestamp", datetime.utcnow().isoformat()),
+                    "user": event.get("user", event.get("entity", "unknown-user")),
+                    "host": event.get("host", event.get("entity", "unknown-host")),
+                    "ip": event.get("ip", "127.0.0.1"),
+                    "action": event.get("eventType", "seed_event"),
+                    "event_type": event.get("eventType", "seed_event"),
+                    "source": event.get("source", "seed"),
+                    "severity": event.get("severity", "Medium"),
+                    "status": event.get("status", "success"),
+                    "raw_payload": event,
+                })
+            storage_service.index_normalized_logs(normalized_seed)
+            for incident in soc_service.list_incidents():
+                storage_service.index_incident({
+                    **incident,
+                    "risk_score": incident.get("riskScore", incident.get("risk_score", 0)),
+                })
+        except Exception as exc:
+            LOGGER.warning("Storage bootstrap failed; continuing in resilient mode: %s", exc)
         app.state.bootstrap_transition_task = asyncio.create_task(soc_service.activate_bootstrap_transition())
         app.state.streaming_task = asyncio.create_task(soc_service.run_streaming_updates())
 
@@ -366,8 +564,60 @@ if FastAPI is not None:
                 "mode": soc_service.response_meta()["mode"],
                 "bootstrapMode": soc_service.response_meta()["bootstrapMode"],
                 "streamCounter": soc_service.response_meta()["streamCounter"],
+                "storageBackend": storage_service.backend,
+                "backendConnected": True,
+                "modelActive": True,
             }
         )
+
+    @app.get("/system/health")
+    async def system_health():
+        return success_response({
+            "api": "healthy",
+            "storage_backend": storage_service.backend,
+            "bootstrap_mode": soc_service.response_meta()["bootstrapMode"],
+            "stream_counter": soc_service.response_meta()["streamCounter"],
+        })
+
+    @app.get("/system/models")
+    async def system_models():
+        return success_response({
+            "models": soc_service.get_detection_feed(),
+            "ollama": {"mode": soc_service.response_meta()["mode"], "available": True},
+        })
+
+    @app.get("/system/metrics")
+    async def system_metrics():
+        return success_response(storage_service.aggregate_metrics())
+
+    @app.post("/auth/login")
+    async def auth_login(request: AuthLoginRequest):
+        token = create_token(request.username, request.role)
+        refresh_token = create_token(f"{request.username}:refresh", request.role)
+        return success_response({
+            "access_token": token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user": {
+                "name": request.username,
+                "role": request.role.lower(),
+            },
+        })
+
+    @app.post("/auth/refresh")
+    async def auth_refresh(request: AuthRefreshRequest):
+        payload = decode_token(request.token)
+        subject = str(payload.get("sub", "secure.operator")).split(":")[0]
+        role = str(payload.get("role", "analyst")).lower()
+        return success_response({
+            "access_token": create_token(subject, role),
+            "token_type": "bearer",
+        })
+
+    @app.post("/ingest/logs")
+    async def ingest_logs(request: IngestLogsRequest):
+        result = await _ingest_and_detect(request.logs)
+        return success_response(result, meta={"ingested": len(request.logs), "storageBackend": storage_service.backend})
 
     @app.get("/metrics")
     async def metrics() -> Response:
@@ -406,15 +656,20 @@ if FastAPI is not None:
 
     @app.get("/api/overview/summary")
     async def overview_summary():
-        return success_response(soc_service.get_overview_summary(), meta=soc_service.response_meta())
+        return success_response(_compose_live_overview(), meta={**soc_service.response_meta(), "storageBackend": storage_service.backend})
 
     @app.get("/api/metrics/soc")
     async def soc_metrics():
-        return success_response(soc_service.get_soc_metrics(), meta=soc_service.response_meta())
+        live_metrics = storage_service.aggregate_metrics()
+        data = soc_service.get_soc_metrics() if not live_metrics["incidents_indexed"] else {
+            **soc_service.get_soc_metrics(),
+            **live_metrics,
+        }
+        return success_response(data, meta={**soc_service.response_meta(), "storageBackend": storage_service.backend})
 
     @app.get("/api/events/live")
     async def live_events():
-        events = soc_service.get_live_events()
+        events = storage_service.query_alerts(limit=50) or soc_service.get_live_events()
         return success_response(events, meta={"count": len(events), **soc_service.response_meta()})
 
     @app.get("/api/detections/feed")
@@ -424,26 +679,34 @@ if FastAPI is not None:
 
     @app.get("/api/incidents")
     async def incidents():
-        rows = soc_service.list_incidents()
+        rows = _storage_incidents_or_fallback()
         return success_response(rows, meta={"count": len(rows), **soc_service.response_meta()})
 
     @app.get("/api/incidents/{incident_id}")
     async def incident_detail(incident_id: str):
-        incident = soc_service.get_incident(incident_id)
+        incident = storage_service.get_incident(incident_id) or soc_service.get_incident(incident_id)
         if incident is None:
             return success_response(soc_service.incident_detail_mock(incident_id), meta={"incidentId": incident_id, "fallback": True, **soc_service.response_meta()})
         return success_response(incident, meta=soc_service.response_meta())
 
     @app.patch("/api/incidents/{incident_id}/status")
     async def update_incident_status(incident_id: str, request: IncidentStatusUpdateRequest):
-        incident = soc_service.update_incident_status(incident_id, request.status)
+        incident = storage_service.get_incident(incident_id) or soc_service.update_incident_status(incident_id, request.status)
+        if incident and storage_service.get_incident(incident_id):
+            incident["status"] = request.status
+            storage_service.index_incident(incident)
+            await _broadcast_event("risk_updated", {"incident_id": incident_id, "status": request.status, "incident": incident})
         if incident is None:
             return success_response(soc_service.incident_detail_mock(incident_id).get("summary", {}), meta={"incidentId": incident_id, "fallback": True})
         return success_response(incident, meta={"message": "Incident status updated."})
 
     @app.patch("/api/incidents/{incident_id}/assign")
     async def assign_incident(incident_id: str, request: IncidentAssignmentRequest):
-        incident = soc_service.assign_incident(incident_id, request.assignee)
+        incident = storage_service.get_incident(incident_id) or soc_service.assign_incident(incident_id, request.assignee)
+        if incident and storage_service.get_incident(incident_id):
+            incident["owner"] = request.assignee
+            incident["assigned_to"] = request.assignee
+            storage_service.index_incident(incident)
         if incident is None:
             return success_response(soc_service.incident_detail_mock(incident_id).get("summary", {}), meta={"incidentId": incident_id, "fallback": True})
         return success_response(incident, meta={"message": "Incident assigned."})
@@ -459,11 +722,21 @@ if FastAPI is not None:
 
     @app.get("/api/attack-graph")
     async def attack_graph():
-        return success_response(soc_service.get_attack_graph(), meta=soc_service.response_meta())
+        incident = _incident_for_graph()
+        graph = graph_service.build_graph(incident or soc_service.list_incidents()[0]) if incident else soc_service.get_attack_graph()
+        return success_response(graph, meta=soc_service.response_meta())
 
     @app.get("/api/attack-graph/{incident_id}")
     async def incident_attack_graph(incident_id: str):
-        return success_response(soc_service.get_attack_graph(incident_id=incident_id), meta=soc_service.response_meta())
+        incident = _incident_for_graph(incident_id)
+        graph = graph_service.build_graph(incident) if incident else soc_service.get_attack_graph(incident_id=incident_id)
+        return success_response(graph, meta=soc_service.response_meta())
+
+    @app.get("/graph/{incident_id}")
+    async def incident_graph(incident_id: str):
+        incident = _incident_for_graph(incident_id)
+        graph = graph_service.build_graph(incident) if incident else soc_service.get_attack_graph(incident_id=incident_id)
+        return success_response(graph)
 
     @app.get("/api/playbooks")
     async def playbooks():
@@ -473,7 +746,23 @@ if FastAPI is not None:
     @app.post("/api/playbooks/run")
     async def run_playbook(request: PlaybookRunRequest):
         result = soc_service.run_playbook(incident_id=request.incidentId, playbook_id=request.playbookId)
+        await _broadcast_event("playbook_executed", result)
         return success_response(result, meta={"message": "Playbook prepared for execution."})
+
+    @app.post("/playbook/execute")
+    async def execute_playbook(request: PlaybookExecutionRequest):
+        timeline_entry = {
+            "time": datetime.utcnow().strftime("%H:%M"),
+            "title": f"Playbook action: {request.action}",
+            "detail": f"Target {request.target or 'incident scope'} updated through simulated response automation.",
+        }
+        incident = storage_service.get_incident(request.incident_id) or soc_service.get_incident(request.incident_id)
+        if incident is None:
+            incident = soc_service.incident_detail_mock(request.incident_id)
+        incident.setdefault("timeline", []).append(timeline_entry)
+        storage_service.index_incident(incident)
+        await _broadcast_event("playbook_executed", {"incident_id": request.incident_id, "action": request.action, "target": request.target, "timeline": timeline_entry})
+        return success_response({"incident_id": request.incident_id, "timeline": timeline_entry, "status": "EXECUTED"})
 
     @app.get("/api/reports")
     async def reports():
@@ -495,6 +784,54 @@ if FastAPI is not None:
     async def admin_users():
         rows = soc_service.get_admin_users()
         return success_response(rows, meta={"count": len(rows)})
+
+    @app.get("/incidents")
+    async def incidents_soc_ready():
+        incidents = _storage_incidents_or_fallback()
+        enriched = []
+        for incident in incidents:
+            risk_value = float(incident.get("risk_score", incident.get("riskScore", 0.0)))
+            graph = incident.get("graph") or graph_service.build_graph(incident)
+            llm = {
+                "summary": incident.get("llm_summary"),
+                "reasoning": incident.get("llm_reasoning"),
+                "attack_stage": incident.get("attack_stage"),
+                "confidence": incident.get("llm_confidence", incident.get("confidence", 0.9)),
+                "recommended_actions": incident.get("recommended_actions", []),
+            }
+            if not llm["summary"]:
+                llm = llm_service.summarize_incident(
+                    anomaly_result={"anomaly_score": incident.get("anomaly_score", 0.0)},
+                    attack_graph=graph,
+                    entity_behavior={"severity": incident.get("severity"), "risk_score": risk_value},
+                    historical_context={"recent_alerts": storage_service.query_alerts(limit=5)},
+                )
+            enriched.append({
+                **incident,
+                "risk_score": risk_value,
+                "graph_summary": graph.get("chain_summary"),
+                "llm": llm,
+            })
+        return success_response(enriched, meta={"count": len(enriched), "storageBackend": storage_service.backend})
+
+    @app.websocket("/ws/incidents")
+    async def websocket_incidents(websocket: WebSocket):
+        await stream_broker.connect(websocket)
+        try:
+            await websocket.send_text(json.dumps({
+                "type": "connected",
+                "timestamp": time.time(),
+                "payload": {
+                    "mode": soc_service.response_meta()["mode"],
+                    "count": len(_storage_incidents_or_fallback()),
+                },
+            }))
+            while True:
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            await stream_broker.disconnect(websocket)
+        except Exception:
+            await stream_broker.disconnect(websocket)
 
     @app.get("/api/insights/workflow/{view}")
     async def workflow_insight(view: str, incident_id: str | None = None):

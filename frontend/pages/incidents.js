@@ -10,6 +10,7 @@ import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
 import { getWorkflowInsight } from '../services/api/insight.service';
 import { useHybridData } from '../hooks/useHybridData';
+import { useRealtimeIncidents } from '../hooks/useRealtimeIncidents';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -24,6 +25,24 @@ export default function IncidentsPage() {
   const { data } = useHybridData('incidents', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
   const focusId = data?.queue?.[0]?.id;
   const { data: focusIncident } = useHybridData('incidentDetail', { id: focusId }, { enabled: Boolean(focusId), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const [liveQueue, setLiveQueue] = useState(null);
+
+  useEffect(() => {
+    if (data?.queue) setLiveQueue(data.queue);
+  }, [data]);
+
+  useRealtimeIncidents({
+    enabled: true,
+    onEvent: (event) => {
+      if (!event?.payload?.incident) return;
+      setLiveQueue((current) => {
+        const existing = Array.isArray(current) ? current : [];
+        const incident = event.payload.incident;
+        const filtered = existing.filter((item) => item.id !== incident.id);
+        return [incident, ...filtered].sort((a, b) => Number(b.risk_score || b.riskScore || 0) - Number(a.risk_score || a.riskScore || 0));
+      });
+    },
+  });
 
   useEffect(() => {
     let active = true;
@@ -64,19 +83,19 @@ export default function IncidentsPage() {
               <section className="grid gap-4 md:grid-cols-4">
                 <div className="soc-panel-muted">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Queue depth</p>
-                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue.length}</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{liveQueue?.length || 0}</p>
                 </div>
                 <div className="soc-panel-muted">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Critical</p>
-                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue.filter((item) => item.severity === 'Critical').length}</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{(liveQueue || []).filter((item) => item.severity === 'Critical').length}</p>
                 </div>
                 <div className="soc-panel-muted">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Unassigned</p>
-                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue.filter((item) => item.owner === 'Unassigned').length}</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{(liveQueue || []).filter((item) => item.owner === 'Unassigned').length}</p>
                 </div>
                 <div className="soc-panel-muted">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Highest risk</p>
-                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{data.queue[0]?.riskScore || 0}</p>
+                  <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{liveQueue?.[0]?.riskScore || liveQueue?.[0]?.risk_score || 0}</p>
                 </div>
               </section>
 
@@ -84,7 +103,7 @@ export default function IncidentsPage() {
               <div className="soc-panel">
                 <DataTable
                   columns={columns}
-                  rows={data.queue}
+                  rows={liveQueue || []}
                   getRowKey={(row) => row.id}
                   renderCell={(row, key) => {
                     if (key === 'id') {

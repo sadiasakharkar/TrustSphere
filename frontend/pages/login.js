@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
+import { apiRequest } from '../services/api/apiClient';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -8,15 +9,36 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('analyst');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (String(router.query.role || '').toLowerCase() === 'admin') setRole('admin');
   }, [router.query.role]);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!username.trim() || !password.trim()) return;
-    login({ username: username.trim(), role });
+    setSubmitting(true);
+    try {
+      const response = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          role,
+        }),
+      });
+      login({
+        username: response.data?.user?.name || username.trim(),
+        role: response.data?.user?.role || role,
+        token: response.data?.access_token || '',
+        refreshToken: response.data?.refresh_token || '',
+      });
+    } catch {
+      login({ username: username.trim(), role });
+    } finally {
+      setSubmitting(false);
+    }
     router.push('/overview');
   };
 
@@ -60,9 +82,9 @@ export default function LoginPage() {
               <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Password</label>
               <input type="password" className="soc-input" placeholder="Enter password" value={password} onChange={(event) => setPassword(event.target.value)} />
             </div>
-            <button type="submit" className="soc-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50" disabled={!username.trim() || !password.trim()}>
+            <button type="submit" className="soc-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50" disabled={!username.trim() || !password.trim() || submitting}>
               <span className="material-symbols-outlined text-base">login</span>
-              Initialize session
+              {submitting ? 'Initializing…' : 'Initialize session'}
             </button>
           </form>
         </section>

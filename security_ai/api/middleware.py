@@ -11,6 +11,7 @@ from threading import Lock
 import time
 from typing import Any
 from uuid import uuid4
+from security_ai.api.core.response import ResponseFactory
 
 try:
     from fastapi import HTTPException, Request
@@ -28,7 +29,7 @@ DEFAULT_API_KEY = os.getenv("TRUSTSPHERE_API_KEY", "trustsphere-local-dev-key")
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("TRUSTSPHERE_RATE_LIMIT_WINDOW_SECONDS", "60"))
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv("TRUSTSPHERE_RATE_LIMIT_MAX_REQUESTS", "120"))
 MAX_REQUEST_SIZE_BYTES = int(os.getenv("TRUSTSPHERE_MAX_REQUEST_SIZE_BYTES", str(1024 * 1024)))
-AUTH_EXEMPT_PATHS = {"/health"}
+AUTH_EXEMPT_PATHS = {"/health", "/system/health", "/auth/login", "/auth/refresh"}
 
 
 class InMemoryRateLimiter:
@@ -74,15 +75,12 @@ authenticator = APIKeyAuthenticator()
 
 
 def build_success_payload(data: Any, meta: dict[str, Any] | None = None) -> dict[str, Any]:
-    return {
-        "success": True,
-        "data": data,
-        "meta": {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+    return ResponseFactory.success(
+        data=data,
+        meta={
             **(meta or {}),
         },
-        "error": None,
-    }
+    )
 
 
 def build_error_payload(
@@ -90,15 +88,7 @@ def build_error_payload(
     *,
     meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "success": False,
-        "data": None,
-        "meta": {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            **(meta or {}),
-        },
-        "error": message,
-    }
+    return ResponseFactory.error(message, data=None, meta=meta or {})
 
 
 def success_response(data: Any, *, meta: dict[str, Any] | None = None, status_code: int = 200):

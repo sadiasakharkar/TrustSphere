@@ -60,7 +60,7 @@ export function AuthRoleProvider({ children }) {
     }
   }, []);
 
-  const login = ({ username, role }) => {
+  const login = ({ username, role, token = '', refreshToken = '' }) => {
     const next = {
       name: username?.trim() || 'secure.operator',
       username: username?.trim() || 'secure.operator',
@@ -70,6 +70,8 @@ export function AuthRoleProvider({ children }) {
     setSession(next);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('trustsphere.session', JSON.stringify(next));
+      if (token) window.localStorage.setItem('trustsphere.authToken', token);
+      if (refreshToken) window.localStorage.setItem('trustsphere.refreshToken', refreshToken);
     }
   };
 
@@ -77,6 +79,8 @@ export function AuthRoleProvider({ children }) {
     setSession(defaultSession);
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('trustsphere.session');
+      window.localStorage.removeItem('trustsphere.authToken');
+      window.localStorage.removeItem('trustsphere.refreshToken');
     }
   };
 

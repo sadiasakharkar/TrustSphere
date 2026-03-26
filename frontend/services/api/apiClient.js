@@ -95,7 +95,7 @@ export async function apiRequest(path, options = {}) {
       const raw = await parseJson(response);
 
       if (!response.ok || raw?.success === false) {
-        const errorMessage = raw?.error || `Request failed with status ${response.status}`;
+        const errorMessage = raw?.error || raw?.errors?.[0] || `Request failed with status ${response.status}`;
         if (shouldRetry(response.status, method, attempt)) {
           await sleep(250 * (attempt + 1));
           continue;

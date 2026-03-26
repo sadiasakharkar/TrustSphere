@@ -12,9 +12,11 @@
  * @template T
  * @typedef {Object} ApiEnvelope
  * @property {boolean} success
+ * @property {string} [timestamp]
  * @property {T} data
  * @property {ApiMeta} [meta]
  * @property {string | null} [error]
+ * @property {string[] | null} [errors]
  */
 
 /**
@@ -74,7 +76,7 @@ export function unwrapApiEnvelope(envelope) {
     throw new Error('Invalid API response: empty payload.');
   }
   if (!envelope.success) {
-    throw new Error(envelope.error || 'Request failed.');
+    throw new Error(envelope.error || envelope.errors?.[0] || 'Request failed.');
   }
   return envelope.data;
 }
@@ -84,5 +86,5 @@ export function unwrapApiEnvelope(envelope) {
  * @returns {string}
  */
 export function envelopeTimestamp(envelope) {
-  return envelope?.meta?.timestamp || new Date().toISOString();
+  return envelope?.timestamp || envelope?.meta?.timestamp || new Date().toISOString();
 }
