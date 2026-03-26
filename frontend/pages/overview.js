@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
 import EmailEvidencePanel from '../components/soc/EmailEvidencePanel';
+import EmailHistoryTable from '../components/soc/EmailHistoryTable';
 import MetricCard from '../components/soc/MetricCard';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
@@ -27,16 +28,67 @@ const activityColumns = [
   { key: 'eventType', label: 'Activity' },
   { key: 'severity', label: 'Severity' }
 ];
+const EMAIL_HISTORY_STORAGE_KEY = 'trustsphere.overview.emailHistory';
 
 export default function OverviewPage() {
   const [focusIncident, setFocusIncident] = useState(null);
+  const [emailHistory, setEmailHistory] = useState([]);
   const [insight, setInsight] = useState(null);
+  const latestEmailSignature = useRef('');
   const { data } = useHybridData('overview', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
   const { data: focusData } = useHybridData('incidentDetail', { id: data?.demoScenario?.focusIncidentId || data?.criticalQueue?.[0]?.id }, { enabled: Boolean(data?.demoScenario?.focusIncidentId || data?.criticalQueue?.[0]?.id), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   useEffect(() => {
     setFocusIncident(focusData || null);
   }, [focusData]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = window.localStorage.getItem(EMAIL_HISTORY_STORAGE_KEY);
+      if (saved) setEmailHistory(JSON.parse(saved));
+    } catch {
+      setEmailHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(EMAIL_HISTORY_STORAGE_KEY, JSON.stringify(emailHistory));
+  }, [emailHistory]);
+
+  useEffect(() => {
+    const emailEvidence = focusIncident?.emailEvidence;
+    const incidentId = focusIncident?.summary?.id;
+    if (!emailEvidence || !incidentId) return;
+
+    const signature = JSON.stringify({
+      incidentId,
+      subject: emailEvidence.subject,
+      risk: emailEvidence.phishingScore,
+      severity: emailEvidence.severity,
+      timestamp: emailEvidence.timestamp
+    });
+
+    if (latestEmailSignature.current === signature) return;
+    latestEmailSignature.current = signature;
+
+    const newEntry = {
+      id: `${incidentId}-${emailEvidence.timestamp}-${emailEvidence.subject}`,
+      incidentId,
+      subject: emailEvidence.subject,
+      bodySnippet: emailEvidence.bodySnippet,
+      risk: emailEvidence.phishingScore,
+      severity: emailEvidence.severity,
+      actions: emailEvidence.actions,
+      time: new Date().toLocaleString()
+    };
+
+    setEmailHistory((current) => {
+      if (current.some((item) => item.id === newEntry.id)) return current;
+      return [newEntry, ...current].slice(0, 12);
+    });
+  }, [focusIncident]);
 
   useEffect(() => {
     let active = true;
@@ -156,6 +208,14 @@ export default function OverviewPage() {
                   <EmailEvidencePanel email={focusIncident?.emailEvidence} />
                 </div>
               </section>
+
+              <EmailHistoryTable
+                history={emailHistory}
+                onClear={() => {
+                  latestEmailSignature.current = '';
+                  setEmailHistory([]);
+                }}
+              />
 
               <section className="grid gap-6 xl:grid-cols-[1.05fr,0.95fr]">
                 <div className="soc-panel">
