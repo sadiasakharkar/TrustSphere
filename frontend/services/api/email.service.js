@@ -63,6 +63,10 @@ function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }
     severity,
     models: { email_detector: Number(probability.toFixed(4)) },
     actions,
+    risk_drivers: [
+      ...(['urgent', 'verify', 'password', 'login', 'click http', 'gift card', 'wire'].filter((token) => text.includes(token))),
+      ...(probability > 0.6 ? ['email_detector anomaly'] : []),
+    ],
     time: new Date().toISOString(),
     label: probability >= 0.5 ? 'phishing' : 'safe',
   };

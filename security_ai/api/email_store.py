@@ -53,6 +53,41 @@ def clear_history() -> None:
     HISTORY_FILE.write_text("[]", encoding="utf-8")
 
 
+def extract_risk_drivers(email_text: str, model_results: dict[str, Any] | None = None) -> list[str]:
+    text_lower = str(email_text or "").lower()
+    drivers: list[str] = []
+
+    keyword_map = {
+        "http": "http link",
+        "https": "https link",
+        "urgent": "urgent",
+        "immediately": "immediately",
+        "action required": "action required",
+        "password": "password",
+        "otp": "otp",
+        "pin": "pin",
+        "credentials": "credentials",
+        "verify": "verify",
+        "login": "login",
+        "account": "account",
+        "gift card": "gift card",
+        "wire": "wire",
+    }
+
+    for token, label in keyword_map.items():
+        if token in text_lower and label not in drivers:
+            drivers.append(label)
+
+    for model, score in (model_results or {}).items():
+        try:
+            if float(score) > 0.6:
+                drivers.append(f"{model} anomaly")
+        except Exception:
+            continue
+
+    return drivers or ["no major indicators"]
+
+
 def build_email_analysis(
     detector_result: dict[str, Any],
     *,
@@ -95,6 +130,7 @@ def build_email_analysis(
             "email_detector": round(probability, 4),
         },
         "actions": actions,
+        "risk_drivers": extract_risk_drivers(email_text, {"email_detector": round(probability, 4)}),
         "time": datetime.utcnow().replace(microsecond=0).isoformat(),
         "label": detector_result.get("label", "safe"),
     }

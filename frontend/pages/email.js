@@ -16,6 +16,7 @@ function mapHistory(items = []) {
     risk: entry.risk_score,
     severity: entry.severity,
     actions: entry.actions || [],
+    riskDrivers: entry.risk_drivers || [],
     time: entry.time || 'Unknown'
   }));
 }
