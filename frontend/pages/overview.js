@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
+import EmailEvidencePanel from '../components/soc/EmailEvidencePanel';
 import MetricCard from '../components/soc/MetricCard';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
@@ -142,6 +143,17 @@ export default function OverviewPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              </section>
+
+              <section className="soc-panel">
+                <SectionHeader
+                  eyebrow="Email"
+                  title="Focus email analysis"
+                  description="Phishing-focused evidence for the current priority incident, surfaced directly from the active case context."
+                />
+                <div className="mt-4">
+                  <EmailEvidencePanel email={focusIncident?.emailEvidence} />
                 </div>
               </section>
 

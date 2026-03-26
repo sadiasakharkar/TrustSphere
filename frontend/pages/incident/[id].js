@@ -5,7 +5,6 @@ import GraphPanel from '../../components/soc/GraphPanel';
 import Layout from '../../components/Layout';
 import RequireAuth from '../../components/RequireAuth';
 import AIInsightPanel from '../../components/soc/AIInsightPanel';
-import EmailEvidencePanel from '../../components/soc/EmailEvidencePanel';
 import EntityPill from '../../components/soc/EntityPill';
 import EvidenceAccordion from '../../components/soc/EvidenceAccordion';
 import EmptyState from '../../components/soc/EmptyState';
@@ -88,8 +87,7 @@ export default function IncidentDetailPage() {
             </section>
             <section className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
               <section className="soc-panel">
-                <EmailEvidencePanel email={data.emailEvidence} />
-                <h2 className="soc-section-title border-t border-[rgba(65,71,85,0.45)] pt-6">Evidence stack</h2>
+                <h2 className="soc-section-title">Evidence stack</h2>
                 <div className="mt-5"><EvidenceAccordion items={data.evidence} /></div>
                 <h3 className="mt-6 text-base font-semibold text-white">Suggested playbook</h3>
                 <div className="mt-4"><PlaybookChecklist steps={playbooks?.[0]?.steps || []} /></div>
