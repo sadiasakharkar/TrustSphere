@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
@@ -8,9 +8,10 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
-import { getWorkflowInsight } from '../services/api/insight.service';
 import { useHybridData } from '../hooks/useHybridData';
 import { useRealtimeIncidents } from '../hooks/useRealtimeIncidents';
+import { getWorkflowInsight } from '../services/api/insight.service';
+import { normalizeIncidentListItem } from '../services/api/incident.service';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -28,7 +29,7 @@ export default function IncidentsPage() {
   const [liveQueue, setLiveQueue] = useState(null);
 
   useEffect(() => {
-    if (data?.queue) setLiveQueue(data.queue);
+    if (data?.queue) setLiveQueue(data.queue.map(normalizeIncidentListItem));
   }, [data]);
 
   useRealtimeIncidents({
@@ -37,7 +38,7 @@ export default function IncidentsPage() {
       if (!event?.payload?.incident) return;
       setLiveQueue((current) => {
         const existing = Array.isArray(current) ? current : [];
-        const incident = event.payload.incident;
+        const incident = normalizeIncidentListItem(event.payload.incident);
         const filtered = existing.filter((item) => item.id !== incident.id);
         return [incident, ...filtered].sort((a, b) => Number(b.risk_score || b.riskScore || 0) - Number(a.risk_score || a.riskScore || 0));
       });
@@ -60,7 +61,7 @@ export default function IncidentsPage() {
       active = false;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [focusId]);
 
   return (
     <RequireAuth>
@@ -80,7 +81,7 @@ export default function IncidentsPage() {
 
           {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="space-y-6">
-              <section className="grid gap-4 md:grid-cols-4">
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="soc-panel-muted">
                   <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Queue depth</p>
                   <p className="mt-3 font-headline text-[32px] font-extrabold tracking-tight text-white">{liveQueue?.length || 0}</p>
@@ -100,57 +101,57 @@ export default function IncidentsPage() {
               </section>
 
               <div className="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
-              <div className="soc-panel">
-                <DataTable
-                  columns={columns}
-                  rows={liveQueue || []}
-                  getRowKey={(row) => row.id}
-                  renderCell={(row, key) => {
-                    if (key === 'id') {
-                      return <Link href={'/incident/' + row.id} className="font-semibold text-white hover:text-[#adc6ff]">{row.id}</Link>;
-                    }
-                    if (key === 'severity') return <StatusBadge tone={row.severity}>{row.severity}</StatusBadge>;
-                    return row[key];
-                  }}
-                  renderExpandedRow={(row) => (
-                    <div className="grid gap-4 lg:grid-cols-[1fr,auto] lg:items-center">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{row.eventType}</p>
-                        <p className="mt-2 text-sm leading-6 soc-text-muted">Affected: {row.affected}. Risk score {row.riskScore}. Tactic: {row.tactic}.</p>
+                <div className="soc-panel overflow-hidden">
+                  <DataTable
+                    columns={columns}
+                    rows={liveQueue || []}
+                    getRowKey={(row) => row.id}
+                    renderCell={(row, key) => {
+                      if (key === 'id') {
+                        return <Link href={`/incident/${row.id}`} className="font-semibold text-white hover:text-[#adc6ff]">{row.id}</Link>;
+                      }
+                      if (key === 'severity') return <StatusBadge tone={row.severity}>{row.severity}</StatusBadge>;
+                      return row[key];
+                    }}
+                    renderExpandedRow={(row) => (
+                      <div className="grid gap-4 lg:grid-cols-[1fr,auto] lg:items-center">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{row.eventType}</p>
+                          <p className="mt-2 text-sm leading-6 soc-text-muted">Affected: {row.affected}. Risk score {row.riskScore}. Tactic: {row.tactic}.</p>
+                        </div>
+                        <Link href={`/incident/${row.id}`} className="soc-btn-secondary">Open incident</Link>
                       </div>
-                      <Link href={'/incident/' + row.id} className="soc-btn-secondary">Open incident</Link>
-                    </div>
-                  )}
-                />
-              </div>
+                    )}
+                  />
+                </div>
 
-              <div className="space-y-6">
-                <div className="soc-panel">
-                  <SectionHeader eyebrow="Current focus" title={focusIncident?.summary?.title || 'No active case'} />
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <StatusBadge tone={focusIncident?.summary?.severity || 'medium'}>{focusIncident?.summary?.severity || 'Medium'}</StatusBadge>
-                    <StatusBadge tone="medium">Confidence {focusIncident?.summary?.confidence || '0.00'}</StatusBadge>
+                <div className="space-y-6">
+                  <div className="soc-panel">
+                    <SectionHeader eyebrow="Current focus" title={focusIncident?.summary?.title || 'No active case'} />
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <StatusBadge tone={focusIncident?.summary?.severity || 'medium'}>{focusIncident?.summary?.severity || 'Medium'}</StatusBadge>
+                      <StatusBadge tone="medium">Confidence {focusIncident?.summary?.confidence || '0.00'}</StatusBadge>
+                    </div>
+                    <p className="mt-4 text-sm leading-6 soc-text-muted">{focusIncident?.summary?.mitre?.join(' | ') || 'No MITRE mapping available.'}</p>
                   </div>
-                  <p className="mt-4 text-sm leading-6 soc-text-muted">{focusIncident?.summary?.mitre?.join(' · ') || 'No MITRE mapping available.'}</p>
-                </div>
-                <div>
-                  <SectionHeader eyebrow="Workflow" title="Current case timeline" />
-                  <div className="mt-4">
-                    <TimelinePanel items={focusIncident?.timeline || []} />
+                  <div>
+                    <SectionHeader eyebrow="Workflow" title="Current case timeline" />
+                    <div className="mt-4">
+                      <TimelinePanel items={focusIncident?.timeline || []} />
+                    </div>
+                  </div>
+                  <div className="soc-panel">
+                    <SectionHeader eyebrow="Evidence" title="Current case evidence" />
+                    <div className="mt-4 space-y-3">
+                      {(focusIncident?.evidence || []).map((item) => (
+                        <div key={item.title} className="soc-panel-muted">
+                          <p className="text-sm font-semibold text-white">{item.title}</p>
+                          <p className="mt-2 text-sm leading-6 soc-text-muted">{item.content}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div className="soc-panel">
-                  <SectionHeader eyebrow="Evidence" title="Current case evidence" />
-                  <div className="mt-4 space-y-3">
-                    {(focusIncident?.evidence || []).map((item) => (
-                      <div key={item.title} className="soc-panel-muted">
-                        <p className="text-sm font-semibold text-white">{item.title}</p>
-                        <p className="mt-2 text-sm leading-6 soc-text-muted">{item.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
               </div>
             </div>
           )}

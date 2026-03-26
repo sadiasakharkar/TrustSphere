@@ -5,15 +5,18 @@ import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
 import EmailEvidencePanel from '../components/soc/EmailEvidencePanel';
 import EmailHistoryTable from '../components/soc/EmailHistoryTable';
+import LiveOperationsBanner from '../components/soc/LiveOperationsBanner';
+import LiveResponseFeed from '../components/soc/LiveResponseFeed';
 import MetricCard from '../components/soc/MetricCard';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
-import EmptyState from '../components/soc/EmptyState';
 import { getWorkflowInsight } from '../services/api/insight.service';
 import { useHybridData } from '../hooks/useHybridData';
+import { useRealtimeIncidents } from '../hooks/useRealtimeIncidents';
+import { deriveRealtimeSummary, deriveResponseFeed } from '../services/actionAdvisor';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -34,9 +37,15 @@ export default function OverviewPage() {
   const [focusIncident, setFocusIncident] = useState(null);
   const [emailHistory, setEmailHistory] = useState([]);
   const [insight, setInsight] = useState(null);
+  const [lastStreamEvent, setLastStreamEvent] = useState(null);
   const latestEmailSignature = useRef('');
-  const { data } = useHybridData('overview', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const { data, status } = useHybridData('overview', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
   const { data: focusData } = useHybridData('incidentDetail', { id: data?.demoScenario?.focusIncidentId || data?.criticalQueue?.[0]?.id }, { enabled: Boolean(data?.demoScenario?.focusIncidentId || data?.criticalQueue?.[0]?.id), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+
+  useRealtimeIncidents({
+    enabled: status.backendConnected,
+    onEvent: (event) => setLastStreamEvent(event)
+  });
 
   useEffect(() => {
     setFocusIncident(focusData || null);
@@ -105,6 +114,15 @@ export default function OverviewPage() {
     };
   }, []);
 
+  const realtimeSummary = deriveRealtimeSummary(data?.criticalQueue || [], lastStreamEvent);
+  const responseFeed = deriveResponseFeed(data?.criticalQueue || []);
+  const operationsStatusLabel = status.backendConnected
+    ? (status.modelActive ? 'Threat stream active' : 'Live link connected')
+    : 'Hybrid bootstrap monitoring';
+  const operationsHighlight = realtimeSummary.topAction
+    ? `${realtimeSummary.topAction.label} is currently the best fit for ${realtimeSummary.topIncident?.title || 'the highest-risk case'}, based on evidence, urgency, and disruption balance.`
+    : 'The platform is collecting enough evidence to prioritize the next best action automatically.';
+
   return (
     <RequireAuth>
       <Layout insightSummary={insight}>
@@ -124,6 +142,16 @@ export default function OverviewPage() {
 
           {!data ? <LoadingSkeleton rows={5} /> : (
             <>
+              <LiveOperationsBanner
+                title="Realtime SOC command posture"
+                statusLabel={operationsStatusLabel}
+                statusTone={status.backendConnected ? 'ready' : 'medium'}
+                updatedAt={lastStreamEvent?.timestamp ? new Date(lastStreamEvent.timestamp * 1000).toISOString() : data.generatedAt}
+                summary={realtimeSummary}
+                highlight={operationsHighlight}
+                cta={data.demoScenario?.focusIncidentId ? <Link href={`/incident/${data.demoScenario.focusIncidentId}`} className="soc-btn-primary">Open live decision workspace</Link> : null}
+              />
+
               <section className="soc-demo-banner">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
@@ -135,7 +163,7 @@ export default function OverviewPage() {
                 </div>
               </section>
 
-              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {data.metrics.map((metric) => (
                   <MetricCard key={metric.label} label={metric.label} value={metric.value} delta={metric.delta} tone={metric.status} helper={metric.helper} />
                 ))}
@@ -178,6 +206,8 @@ export default function OverviewPage() {
                   </div>
                 </div>
               </section>
+
+              <LiveResponseFeed items={responseFeed} streamEvent={lastStreamEvent} title="Recommended response queue" />
 
               <section className="grid gap-6 xl:grid-cols-[0.9fr,1.1fr]">
                 <div>
