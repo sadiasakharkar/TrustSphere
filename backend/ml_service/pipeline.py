@@ -1,5 +1,8 @@
 import numpy as np
 from model_runner import run_all_models
+from action_engine import take_action
+from history_store import save_history
+from datetime import datetime
 
 def preprocess(data):
     return data.get("input", [])
@@ -27,8 +30,22 @@ def run_pipeline(data):
     else:
         severity = "LOW"
 
+    actions = take_action(model_results, severity)
+
+    entry = {
+        "input": str(data.get("input", "")),
+        "risk_score": risk_score,
+        "severity": severity,
+        "models": model_results,
+        "actions": actions,
+        "time": datetime.now().isoformat(timespec="seconds")
+    }
+
+    save_history(entry)
+
     return {
         "risk_score": risk_score,
         "severity": severity,
-        "models": model_results
+        "models": model_results,
+        "actions_taken": actions
     }

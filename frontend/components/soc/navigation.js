@@ -1,6 +1,7 @@
 export const socNavigation = {
   analyst: [
     { href: '/overview', label: 'Overview', icon: 'dashboard' },
+    { href: '/email', label: 'Email Analyzer', icon: 'mail' },
     { href: '/incidents', label: 'Incidents', icon: 'assignment' },
     { href: '/monitoring', label: 'Alerts', icon: 'monitoring' },
     { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
@@ -10,6 +11,7 @@ export const socNavigation = {
   ],
   admin: [
     { href: '/overview', label: 'Overview', icon: 'dashboard' },
+    { href: '/email', label: 'Email Analyzer', icon: 'mail' },
     { href: '/settings', label: 'System Health', icon: 'monitor_heart' },
     { href: '/detections', label: 'Model Monitoring', icon: 'shield_lock' },
     { href: '/administration', label: 'User Management', icon: 'group' },
