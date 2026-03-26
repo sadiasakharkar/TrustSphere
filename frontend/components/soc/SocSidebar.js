@@ -1,12 +1,19 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { socNavigation } from './navigation';
+import { getNavigationForRole } from './navigation';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose }) {
   const router = useRouter();
   const { session } = useAuth();
-  const visibleNavigation = socNavigation.filter((item) => !item.allowedRoles || item.allowedRoles.includes(session.role));
+  const visibleNavigation = getNavigationForRole(session.role);
+  const isActiveRoute = (href) => {
+    if (router.pathname === href) return true;
+    if (href === '/incidents' && (router.pathname === '/triage' || router.pathname === '/incident/[id]')) return true;
+    if (href === '/playbooks' && router.pathname === '/response') return true;
+    if (href === '/settings' && router.pathname === '/administration') return true;
+    return false;
+  };
 
   return (
     <>
@@ -43,9 +50,9 @@ export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose })
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3">
           {visibleNavigation.map((item) => {
-            const active = router.pathname === item.href || (item.href === '/triage' && router.pathname === '/incidents') || (item.href === '/response' && router.pathname === '/playbooks') || (item.href === '/administration' && router.pathname === '/settings');
+            const active = isActiveRoute(item.href);
             return (
-              <Link key={item.href} href={item.href} className={`soc-nav-link ${active ? 'soc-nav-link-active' : ''}`} onClick={onClose}>
+              <Link key={`${session.role}-${item.label}-${item.href}`} href={item.href} className={`soc-nav-link ${active ? 'soc-nav-link-active' : ''}`} onClick={onClose}>
                 <span className="soc-nav-icon material-symbols-outlined">{item.icon}</span>
                 {!collapsed ? <span>{item.label}</span> : null}
               </Link>

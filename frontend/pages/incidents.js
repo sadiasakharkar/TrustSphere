@@ -8,10 +8,8 @@ import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
-import EmptyState from '../components/soc/EmptyState';
-import { getTriageQueue } from '../services/api/incidentService';
-import { getIncidentDetail } from '../services/api/incidentService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -22,34 +20,23 @@ const columns = [
 ];
 
 export default function IncidentsPage() {
-  const [data, setData] = useState(null);
-  const [focusIncident, setFocusIncident] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('incidents', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const focusId = data?.queue?.[0]?.id;
+  const { data: focusIncident } = useHybridData('incidentDetail', { id: focusId }, { enabled: Boolean(focusId), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
-        const queue = await getTriageQueue();
-        if (!active) return;
-        setData(queue);
-        hasLoadedRef.current = true;
-        setError('');
-        const workflow = await getWorkflowInsight('incidents', queue?.queue?.[0]?.id);
+        const workflow = await getWorkflowInsight('incidents', focusId);
         if (active) setInsight(workflow);
-        const firstId = queue?.queue?.[0]?.id;
-        if (firstId) {
-          const detail = await getIncidentDetail(firstId);
-          if (active) setFocusIncident(detail);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load incidents.');
+      } catch {
+        if (active) setInsight(null);
       }
     };
     load();
-    const interval = window.setInterval(load, 2000);
+    const interval = window.setInterval(load, 6000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -72,7 +59,7 @@ export default function IncidentsPage() {
             }
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Incident queue snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="space-y-6">
               <section className="grid gap-4 md:grid-cols-4">
                 <div className="soc-panel-muted">

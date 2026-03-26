@@ -10,9 +10,8 @@ import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
 import TimelinePanel from '../components/soc/TimelinePanel';
 import EmptyState from '../components/soc/EmptyState';
-import { getOverviewSummary } from '../services/api/overviewService';
-import { getIncidentDetail } from '../services/api/incidentService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 const columns = [
   { key: 'id', label: 'Incident' },
@@ -29,37 +28,27 @@ const activityColumns = [
 ];
 
 export default function OverviewPage() {
-  const [data, setData] = useState(null);
   const [focusIncident, setFocusIncident] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('overview', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const { data: focusData } = useHybridData('incidentDetail', { id: data?.demoScenario?.focusIncidentId || data?.criticalQueue?.[0]?.id }, { enabled: Boolean(data?.demoScenario?.focusIncidentId || data?.criticalQueue?.[0]?.id), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+
+  useEffect(() => {
+    setFocusIncident(focusData || null);
+  }, [focusData]);
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
+    (async () => {
       try {
-        const summary = await getOverviewSummary();
-        if (!active) return;
-        setData(summary);
-        hasLoadedRef.current = true;
-        setError('');
         const overviewInsight = await getWorkflowInsight('overview');
         if (active) setInsight(overviewInsight);
-        const primary = summary?.criticalQueue?.[0]?.id;
-        if (primary) {
-          const detail = await getIncidentDetail(primary);
-          if (active) setFocusIncident(detail);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load overview data.');
+      } catch {
+        if (active) setInsight(null);
       }
-    };
-    load();
-    const interval = window.setInterval(load, 2000);
+    })();
     return () => {
       active = false;
-      window.clearInterval(interval);
     };
   }, []);
 
@@ -79,7 +68,7 @@ export default function OverviewPage() {
             }
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline overview snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <>
               <section className="soc-demo-banner">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

@@ -3,38 +3,29 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import GraphPanel from '../components/soc/GraphPanel';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { getThreatGraph } from '../services/api/graphService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 export default function ThreatGraphPage() {
-  const [data, setData] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('attackGraph', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
-        const graph = await getThreatGraph();
-        if (active) {
-          setData(graph);
-          hasLoadedRef.current = true;
-          setError('');
-          const workflow = await getWorkflowInsight('threat-graph');
-          if (active) setInsight(workflow);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load attack graph.');
+        const workflow = await getWorkflowInsight('threat-graph');
+        if (active) setInsight(workflow);
+      } catch {
+        if (active) setInsight(null);
       }
     };
     load();
-    const interval = window.setInterval(load, 2000);
+    const interval = window.setInterval(load, 6000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -52,7 +43,7 @@ export default function ThreatGraphPage() {
             actions={<Link href="/playbooks" className="soc-btn-primary">Continue to response</Link>}
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline attack graph snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="space-y-6">
               <section className="grid gap-4 md:grid-cols-3">
                 <div className="soc-panel-muted">

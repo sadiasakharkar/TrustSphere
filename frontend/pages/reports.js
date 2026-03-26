@@ -3,13 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { exportReport, getReportsWorkspace } from '../services/api/report.service';
+import { exportReport } from '../services/api/report.service';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 const columns = [
   { key: 'id', label: 'Report' },
@@ -20,26 +20,18 @@ const columns = [
 ];
 
 export default function ReportsPage() {
-  const [data, setData] = useState(null);
   const [exportState, setExportState] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('reports', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const response = await getReportsWorkspace();
-        if (active) {
-          setData(response);
-          hasLoadedRef.current = true;
-          setError('');
-          const workflow = await getWorkflowInsight('reports');
-          if (active) setInsight(workflow);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load reports.');
+        const workflow = await getWorkflowInsight('reports');
+        if (active) setInsight(workflow);
+      } catch {
+        if (active) setInsight(null);
       }
     })();
     return () => {
@@ -53,7 +45,7 @@ export default function ReportsPage() {
         <PageContainer>
           <SectionHeader eyebrow="Reports" title="Incident Reports" description="Review and export backend-generated SOC reports." actions={<Link href="/overview" className="soc-btn-secondary">Return to overview</Link>} />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Report library snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="space-y-6">
               <section className="grid gap-4 md:grid-cols-2">
                 <div className="soc-panel-muted">

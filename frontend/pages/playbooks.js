@@ -2,36 +2,29 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import PlaybookChecklist from '../components/soc/PlaybookChecklist';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { getPlaybooks, runPlaybook } from '../services/api/detectionService';
+import { runPlaybook } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 export default function PlaybooksPage() {
-  const [data, setData] = useState(null);
   const [execution, setExecution] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('playbooks', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const playbooks = data?.playbooks || [];
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const response = await getPlaybooks();
-        if (active) {
-          setData(response.playbooks || []);
-          hasLoadedRef.current = true;
-          setError('');
-          const workflow = await getWorkflowInsight('playbooks');
-          if (active) setInsight(workflow);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load playbooks.');
+        const workflow = await getWorkflowInsight('playbooks');
+        if (active) setInsight(workflow);
+      } catch {
+        if (active) setInsight(null);
       }
     })();
     return () => {
@@ -50,16 +43,16 @@ export default function PlaybooksPage() {
             actions={<Link href="/reports" className="soc-btn-secondary">Proceed to reports</Link>}
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Playbook catalog snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
               <section className="soc-panel">
-                <SectionHeader eyebrow="Catalog" title={data?.[0]?.name || 'No playbook loaded'} />
+                <SectionHeader eyebrow="Catalog" title={playbooks?.[0]?.name || 'No playbook loaded'} />
                 <div className="mt-4 flex items-center gap-3">
-                  <StatusBadge tone="ready">{data?.length || 0} available</StatusBadge>
+                  <StatusBadge tone="ready">{playbooks?.length || 0} available</StatusBadge>
                   <button
                     className="soc-btn-primary"
                     onClick={async () => {
-                      const result = await runPlaybook('INC-21403', data?.[0]?.id);
+                      const result = await runPlaybook('INC-21403', playbooks?.[0]?.id);
                       setExecution(result);
                     }}
                   >
@@ -76,7 +69,7 @@ export default function PlaybooksPage() {
               <section className="soc-panel">
                 <SectionHeader eyebrow="Steps" title="Recommended response sequence" />
                 <div className="mt-4">
-                  <PlaybookChecklist steps={execution?.playbook?.steps || data?.[0]?.steps || []} />
+                  <PlaybookChecklist steps={execution?.playbook?.steps || playbooks?.[0]?.steps || []} />
                 </div>
               </section>
             </div>

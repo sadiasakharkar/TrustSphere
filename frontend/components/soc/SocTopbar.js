@@ -2,13 +2,19 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../services/api/apiClient';
+import { probeBackend } from '../../services/dataProvider';
 import StatusIndicator from './StatusIndicator';
 
 export default function SocTopbar({ onMenu }) {
   const { session, logout } = useAuth();
   const router = useRouter();
   const [now, setNow] = useState('');
-  const [modeStatus, setModeStatus] = useState({ bootstrapMode: true, mode: 'bootstrap' });
+  const [modeStatus, setModeStatus] = useState({
+    bootstrapMode: true,
+    mode: 'bootstrap',
+    backendConnected: false,
+    modelActive: false
+  });
 
   useEffect(() => {
     const formatNow = () => {
@@ -29,15 +35,25 @@ export default function SocTopbar({ onMenu }) {
     let active = true;
     const loadStatus = async () => {
       try {
-        const response = await apiRequest('/health');
+        const [healthResponse, probe] = await Promise.all([
+          apiRequest('/health'),
+          probeBackend()
+        ]);
         if (!active) return;
         setModeStatus({
-          bootstrapMode: Boolean(response.data?.bootstrapMode),
-          mode: response.data?.mode || 'bootstrap',
+          bootstrapMode: Boolean(healthResponse.data?.bootstrapMode ?? !probe.connected),
+          mode: healthResponse.data?.mode || (probe.connected ? 'live' : 'bootstrap'),
+          backendConnected: probe.connected,
+          modelActive: Boolean(probe.connected && (healthResponse.data?.mode === 'live' || healthResponse.data?.modelActive || healthResponse.data?.status === 'ok'))
         });
       } catch {
         if (active) {
-          setModeStatus({ bootstrapMode: true, mode: 'bootstrap' });
+          setModeStatus({
+            bootstrapMode: true,
+            mode: 'bootstrap',
+            backendConnected: false,
+            modelActive: false
+          });
         }
       }
     };
@@ -65,10 +81,12 @@ export default function SocTopbar({ onMenu }) {
         <div className="hidden rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 text-xs font-medium text-[rgba(223,226,235,0.72)] xl:inline-flex">
           Live {now}
         </div>
-        <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 md:flex">
-          <StatusIndicator status={modeStatus.bootstrapMode ? 'Bootstrap mode' : 'Live AI mode'} pulse={modeStatus.bootstrapMode} />
+        <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 xl:flex">
+          <StatusIndicator status={modeStatus.bootstrapMode ? 'Demo mode' : 'Live AI mode'} pulse={modeStatus.bootstrapMode} />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
-          <StatusIndicator status="Inference healthy" />
+          <StatusIndicator status={modeStatus.backendConnected ? 'Backend connected' : 'Backend offline'} pulse={!modeStatus.backendConnected} />
+          <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
+          <StatusIndicator status={modeStatus.modelActive ? 'Model active' : 'Model standby'} />
         </div>
         <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push(session.role === 'admin' ? '/settings' : '/overview')}>
           <span className="material-symbols-outlined">manage_accounts</span>

@@ -1,13 +1,24 @@
-export const socNavigation = [
-  { href: '/overview', label: 'Overview', icon: 'dashboard', allowedRoles: ['analyst', 'admin'] },
-  { href: '/monitoring', label: 'Monitoring', icon: 'monitoring', allowedRoles: ['analyst', 'admin'] },
-  { href: '/triage', label: 'Triage', icon: 'assignment', allowedRoles: ['analyst', 'admin'] },
-  { href: '/investigations', label: 'Investigations', icon: 'search_insights', allowedRoles: ['analyst', 'admin'] },
-  { href: '/threat-graph', label: 'Attack Graph', icon: 'hub', allowedRoles: ['analyst', 'admin'] },
-  { href: '/response', label: 'Response', icon: 'playlist_add_check', allowedRoles: ['analyst', 'admin'] },
-  { href: '/reports', label: 'Reports', icon: 'description', allowedRoles: ['analyst', 'admin'] },
-  { href: '/analytics', label: 'Analytics', icon: 'analytics', allowedRoles: ['analyst', 'admin'] },
-  { href: '/detections', label: 'Detections', icon: 'shield_lock', allowedRoles: ['admin'] },
-  { href: '/administration', label: 'Administration', icon: 'admin_panel_settings', allowedRoles: ['admin'] },
-  { href: '/settings', label: 'Settings', icon: 'settings', allowedRoles: ['admin'] }
-];
+export const socNavigation = {
+  analyst: [
+    { href: '/overview', label: 'Overview', icon: 'dashboard' },
+    { href: '/incidents', label: 'Incidents', icon: 'assignment' },
+    { href: '/monitoring', label: 'Alerts', icon: 'monitoring' },
+    { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
+    { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
+    { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
+    { href: '/analytics', label: 'AI Insights', icon: 'analytics' },
+  ],
+  admin: [
+    { href: '/overview', label: 'Overview', icon: 'dashboard' },
+    { href: '/settings', label: 'System Health', icon: 'monitor_heart' },
+    { href: '/detections', label: 'Model Monitoring', icon: 'shield_lock' },
+    { href: '/administration', label: 'User Management', icon: 'group' },
+    { href: '/monitoring', label: 'Data Sources', icon: 'lan' },
+    { href: '/reports', label: 'Compliance Logs', icon: 'fact_check' },
+    { href: '/settings', label: 'Configuration', icon: 'settings' },
+  ],
+};
+
+export function getNavigationForRole(role) {
+  return socNavigation[role] || socNavigation.analyst;
+}

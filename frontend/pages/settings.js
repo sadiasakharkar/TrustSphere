@@ -1,36 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusIndicator from '../components/soc/StatusIndicator';
 import { useAuth } from '../context/AuthContext';
-import { getAdministrationWorkspace } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 export default function SettingsPage() {
-  const [data, setData] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
   const { isAdmin, session } = useAuth();
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('administration', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const workspace = await getAdministrationWorkspace();
-        if (active) {
-          setData(workspace);
-          hasLoadedRef.current = true;
-          setError('');
-          const workflow = await getWorkflowInsight('settings');
-          if (active) setInsight(workflow);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load administration data.');
+        const workflow = await getWorkflowInsight('settings');
+        if (active) setInsight(workflow);
+      } catch {
+        if (active) setInsight(null);
       }
     })();
     return () => {
@@ -48,7 +39,7 @@ export default function SettingsPage() {
             description="Operator preferences and platform status. Administrators see additional governance controls in the same Stitch layout."
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="System settings snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Profile" title={session.username || 'secure.operator'} description={`Role: ${session.role}`} />
@@ -88,7 +79,7 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {data && !error ? (
+          {data ? (
             <section className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
               <section className="soc-panel">
                 <SectionHeader eyebrow="Models" title="Backend model health" />

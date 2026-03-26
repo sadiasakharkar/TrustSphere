@@ -3,15 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { getMonitoringFeed } from '../services/api/incidentService';
-import { getDetectionsOverview } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
-import { getSocMetrics } from '../services/api/overview.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 const eventColumns = [
   { key: 'timestamp', label: 'Time' },
@@ -22,36 +19,24 @@ const eventColumns = [
 ];
 
 export default function MonitoringPage() {
-  const [events, setEvents] = useState(null);
-  const [detectors, setDetectors] = useState(null);
-  const [metrics, setMetrics] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('monitoring', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const events = data?.events || [];
+  const detectors = data?.detectors || [];
+  const metrics = data?.metrics || {};
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
-        const [eventResponse, detectionResponse, metricsResponse] = await Promise.all([
-          getMonitoringFeed(),
-          getDetectionsOverview(),
-          getSocMetrics()
-        ]);
-        if (!active) return;
-        setEvents(eventResponse.events);
-        setDetectors(detectionResponse.detectors);
-        setMetrics(metricsResponse);
-        hasLoadedRef.current = true;
-        setError('');
         const workflow = await getWorkflowInsight('monitoring');
         if (active) setInsight(workflow);
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load monitoring feed.');
+      } catch {
+        if (active) setInsight(null);
       }
     };
     load();
-    const interval = window.setInterval(load, 2000);
+    const interval = window.setInterval(load, 6000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -69,7 +54,7 @@ export default function MonitoringPage() {
             actions={<Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
           />
 
-          {!events && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Offline monitoring feed" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="space-y-6">
               <section className="grid gap-4 md:grid-cols-3">
                 <div className="soc-panel-muted">

@@ -14,54 +14,41 @@ import PageHeader from '../../components/soc/PageHeader';
 import PlaybookChecklist from '../../components/soc/PlaybookChecklist';
 import SeverityBadge from '../../components/soc/SeverityBadge';
 import TimelineRail from '../../components/soc/TimelineRail';
-import { getIncidentDetail } from '../../services/api/incidentService';
-import { getThreatGraph } from '../../services/api/graphService';
-import { getPlaybooks } from '../../services/api/detectionService';
 import { getIncidentInsight } from '../../services/api/insight.service';
+import { useHybridData } from '../../hooks/useHybridData';
 
 export default function IncidentDetailPage() {
   const router = useRouter();
-  const [data, setData] = useState(null);
-  const [graph, setGraph] = useState(null);
-  const [playbooks, setPlaybooks] = useState([]);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const incidentId = typeof router.query.id === 'string' ? router.query.id : '';
+  const { data } = useHybridData('incidentDetail', { id: incidentId }, { enabled: Boolean(incidentId), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const { data: graph } = useHybridData('attackGraph', { id: incidentId }, { enabled: Boolean(incidentId), bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const { data: playbookData } = useHybridData('playbooks', {}, { enabled: true, bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const playbooks = playbookData?.playbooks || [];
 
   useEffect(() => {
-    if (!router.query.id) return;
+    if (!incidentId) return;
     let active = true;
     const load = async () => {
       try {
-        const [incident, incidentGraph, availablePlaybooks] = await Promise.all([
-          getIncidentDetail(router.query.id),
-          getThreatGraph(router.query.id),
-          getPlaybooks()
-        ]);
-        if (!active) return;
-        setData(incident);
-        setGraph(incidentGraph);
-        setPlaybooks(availablePlaybooks?.playbooks || []);
-        hasLoadedRef.current = true;
-        setError('');
-        const summary = await getIncidentInsight(router.query.id);
+        const summary = await getIncidentInsight(incidentId);
         if (active) setInsight(summary);
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load incident workspace.');
+      } catch {
+        if (active) setInsight(null);
       }
     };
     load();
-    const interval = window.setInterval(load, 2000);
+    const interval = window.setInterval(load, 6000);
     return () => {
       active = false;
       window.clearInterval(interval);
     };
-  }, [router.query.id]);
+  }, [incidentId]);
 
   return (
     <RequireAuth>
       <Layout insightSummary={insight}>
-        {!data && !error ? <LoadingSkeleton rows={6} /> : error ? <PageContainer><EmptyState title="Incident workspace snapshot" detail={error} /></PageContainer> : (
+        {!data ? <LoadingSkeleton rows={6} /> : (
           <PageContainer>
             <PageHeader
               kicker="Incident Detail"

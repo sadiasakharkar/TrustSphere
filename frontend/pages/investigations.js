@@ -3,13 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import DataTable from '../components/soc/DataTable';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { getInvestigationWorkspace } from '../services/api/detectionService';
 import { getWorkflowInsight } from '../services/api/insight.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 const columns = [
   { key: 'entity', label: 'Entity' },
@@ -20,25 +19,17 @@ const columns = [
 ];
 
 export default function InvestigationsPage() {
-  const [data, setData] = useState(null);
   const [insight, setInsight] = useState(null);
-  const [error, setError] = useState('');
-  const hasLoadedRef = useRef(false);
+  const { data } = useHybridData('investigations', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const workspace = await getInvestigationWorkspace();
-        if (active) {
-          setData(workspace);
-          hasLoadedRef.current = true;
-          setError('');
-          const workflow = await getWorkflowInsight('investigations');
-          if (active) setInsight(workflow);
-        }
-      } catch (err) {
-        if (active && !hasLoadedRef.current) setError(err.message || 'Unable to load investigations.');
+        const workflow = await getWorkflowInsight('investigations');
+        if (active) setInsight(workflow);
+      } catch {
+        if (active) setInsight(null);
       }
     })();
     return () => {
@@ -63,7 +54,7 @@ export default function InvestigationsPage() {
             }
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Investigation workspace snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <div className="grid gap-6 xl:grid-cols-[1.1fr,0.9fr]">
               <div className="soc-panel">
                 <DataTable

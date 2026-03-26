@@ -4,12 +4,11 @@ import RequireAuth from '../components/RequireAuth';
 import { AnomalyLineChart, SeverityBarChart } from '../components/Charts';
 import Card from '../components/Card';
 import DataTable from '../components/soc/DataTable';
-import EmptyState from '../components/soc/EmptyState';
 import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { getAnalyticsWorkspace } from '../services/api/analytics.service';
+import { useHybridData } from '../hooks/useHybridData';
 
 const columns = [
   { key: 'entity', label: 'Entity' },
@@ -19,23 +18,7 @@ const columns = [
 ];
 
 export default function AnalyticsPage() {
-  const [data, setData] = useState(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const workspace = await getAnalyticsWorkspace();
-        if (active) setData(workspace);
-      } catch (err) {
-        if (active) setError(err.message || 'Unable to load analytics.');
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { data } = useHybridData('analytics', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   return (
     <RequireAuth>
@@ -47,7 +30,7 @@ export default function AnalyticsPage() {
             description="Review anomaly trends and concentration by entity without clutter. This page is intentionally sparse so charts remain readable."
           />
 
-          {!data && !error ? <LoadingSkeleton rows={5} /> : error ? <EmptyState title="Analytics snapshot" detail={error} /> : (
+          {!data ? <LoadingSkeleton rows={5} /> : (
             <>
               <section className="grid gap-6 xl:grid-cols-2">
                 <AnomalyLineChart series={data.riskDistribution} title="Incident Risk Distribution" label="Risk score" />
