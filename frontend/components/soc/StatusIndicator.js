@@ -2,10 +2,12 @@ export default function StatusIndicator({ status = 'Nominal', pulse = false }) {
   const lower = String(status).toLowerCase();
   const color = lower.includes('ready') || lower.includes('healthy') || lower.includes('nominal') || lower.includes('connected') || lower.includes('live') || lower.includes('active')
     ? 'bg-[#4ae176]'
-    : lower.includes('bootstrap') || lower.includes('activating')
+    : lower.includes('bootstrap') || lower.includes('activating') || lower.includes('hybrid')
       ? 'bg-[#ffb86b]'
     : lower.includes('offline') || lower.includes('error') || lower.includes('critical')
       ? 'bg-[#ff6b6b]'
+    : lower.includes('simulation')
+      ? 'bg-[#adc6ff]'
     : lower.includes('high') || lower.includes('pending') || lower.includes('standby')
       ? 'bg-[#ffb3ad]'
       : 'bg-[#adc6ff]';

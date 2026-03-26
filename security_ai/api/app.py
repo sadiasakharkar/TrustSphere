@@ -30,7 +30,9 @@ except Exception:
     JSONResponse = object
 
 from security_ai.api.core.auth import create_token, decode_token
+from security_ai.api.ml_runtime.safe_import import ML_AVAILABLE, check_ml_runtime
 from security_ai.api.model_loader import ModelLoader
+from security_ai.api.pipeline.execution_mode import HYBRID_MODE, LIVE_MODE, SIMULATION_MODE
 from security_ai.api.services import (
     DetectionService,
     DetectorService,
@@ -54,6 +56,7 @@ from security_ai.api.middleware import (
     structured_log,
 )
 from security_ai.api.soc_service import SOCService
+from security_ai.api.system.health_validator import HealthValidator
 from security_ai.monitoring.metrics import MetricsSnapshot, REQUEST_COUNTER, REQUEST_LATENCY, metrics_payload, record_model_snapshot
 from security_ai.registry.mlflow_registry import MLflowRegistry
 
@@ -118,6 +121,40 @@ class PlaybookExecutionRequest(BaseModel):
     action: str
     target: str | None = None
 
+
+def _synthetic_test_logs() -> list[dict[str, Any]]:
+    now = datetime.utcnow().replace(microsecond=0).isoformat()
+    return [
+        {
+            "timestamp": now,
+            "event_id": "test-login-001",
+            "user": "demo.analyst",
+            "host": "payments-app-01",
+            "ip": "203.0.113.41",
+            "event_type": "login_failure_burst",
+            "action": "login_failure_burst",
+            "source": "IAM",
+            "severity": "High",
+            "status": "failed",
+            "failed_attempts": 8,
+            "raw_payload": {"scenario": "pipeline_test"},
+        },
+        {
+            "timestamp": now,
+            "event_id": "test-priv-002",
+            "user": "demo.analyst",
+            "host": "payments-app-01",
+            "ip": "203.0.113.41",
+            "event_type": "privilege_escalation",
+            "action": "privilege_escalation",
+            "source": "EDR",
+            "severity": "Critical",
+            "status": "success",
+            "bytes_sent": 750000,
+            "raw_payload": {"scenario": "pipeline_test"},
+        },
+    ]
+
 if FastAPI is not None:
     app = FastAPI(title="TrustSphere Security AI Platform", version="2.0.0")
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -131,6 +168,7 @@ if FastAPI is not None:
     llm_service = LLMService()
     stream_broker = IncidentStreamBroker()
     soc_service = SOCService()
+    app.state.pipeline_mode = HYBRID_MODE
     registry = MLflowRegistry(base_dir=__import__("pathlib").Path(__file__).resolve().parents[1])
     request_schema_registry = {
         "/detect/email": (EMAIL_REQUEST_SCHEMA_VERSION, EmailDetectionRequest),
@@ -139,6 +177,9 @@ if FastAPI is not None:
         "/detect/attachment": (ATTACHMENT_REQUEST_SCHEMA_VERSION, AttachmentDetectionRequest),
         "/guard/prompt": (PROMPT_GUARD_REQUEST_SCHEMA_VERSION, PromptGuardRequest),
         "/analyze/incident": (INCIDENT_SCHEMA_VERSION, IncidentAnalysisRequest),
+    }
+    body_optional_post_paths = {
+        "/system/test-pipeline",
     }
 
     def _storage_incidents_or_fallback() -> list[dict[str, Any]]:
@@ -197,13 +238,16 @@ if FastAPI is not None:
         })
 
     async def _ingest_and_detect(raw_logs: list[dict[str, Any]]) -> dict[str, Any]:
+        LOGGER.info("[PIPELINE] normalize ✔")
         normalized_events = [event.model_dump(mode="json") for event in normalizer.normalize(raw_logs)]
         storage_service.index_normalized_logs(normalized_events)
+        LOGGER.info("[PIPELINE] anomaly ✔")
         detections = live_detection_service.detect(raw_logs)
         created_incidents = []
         history = storage_service.fetch_incidents()
         for index, detection in enumerate(detections):
             source_event = normalized_events[min(index, len(normalized_events) - 1)] if normalized_events else {}
+            LOGGER.info("[PIPELINE] risk ✔")
             risk = risk_service.score(detection, history=history, asset_type="server" if "db" in str(source_event.get("host", "")).lower() else "workstation")
             incident_id = source_event.get("event_id") or f"INC-LIVE-{int(time.time() * 1000)}-{index}"
             incident = {
@@ -246,7 +290,9 @@ if FastAPI is not None:
                     "mitre": ["Initial Access" if "login" in str(source_event.get("event_type", "")).lower() else "Lateral Movement"],
                 },
             }
+            LOGGER.info("[PIPELINE] graph ✔")
             graph = graph_service.build_graph(incident, [detection])
+            LOGGER.info("[PIPELINE] reasoning ✔")
             llm = llm_service.summarize_incident(
                 anomaly_result=detection,
                 attack_graph=graph,
@@ -268,7 +314,8 @@ if FastAPI is not None:
             })
             created_incidents.append(incident)
             history.append(incident)
-            await _broadcast_event("new_anomaly_detected", {"incident": incident, "risk": risk, "graph": graph})
+            LOGGER.info("[PIPELINE] incident ✔")
+            await _broadcast_event("INCIDENT_CREATED", {"incident": incident, "risk": risk, "graph": graph})
         return {
             "normalized_logs": normalized_events,
             "detections": detections,
@@ -440,12 +487,18 @@ if FastAPI is not None:
             )
 
         body = await request.body()
-        if not body:
+        if not body and endpoint not in body_optional_post_paths:
             return error_response(
                 status_code=422,
                 message="Request body is required.",
                 meta={"requestId": request_id},
             )
+        if not body:
+            async def receive_empty() -> dict[str, Any]:
+                return {"type": "http.request", "body": b"", "more_body": False}
+
+            request._receive = receive_empty
+            return await call_next(request)
         if len(body) > MAX_REQUEST_SIZE_BYTES:
             return error_response(
                 status_code=413,
@@ -510,10 +563,13 @@ if FastAPI is not None:
 
     @app.on_event("startup")
     async def startup_event() -> None:
-        try:
-            loader.warmup()
-        except Exception as exc:
-            LOGGER.warning("Model warmup failed; continuing in resilient mode: %s", exc)
+        if ML_AVAILABLE:
+            try:
+                loader.warmup()
+            except Exception as exc:
+                LOGGER.warning("Model warmup failed; continuing in resilient mode: %s", exc)
+        else:
+            LOGGER.warning("[PIPELINE] anomaly degraded to simulation mode because ML runtime is disabled or unavailable.")
         try:
             registry.register_model("ueba_anomaly_model", {"component": "trustsphere-ai", "status": "production"})
             registry.register_model("email_detector", {"endpoint": "/detect/email", "status": "production"})
@@ -550,6 +606,15 @@ if FastAPI is not None:
                 })
         except Exception as exc:
             LOGGER.warning("Storage bootstrap failed; continuing in resilient mode: %s", exc)
+        if not storage_service.fetch_incidents():
+            for incident in soc_service.list_incidents()[:10]:
+                storage_service.index_incident({**incident, "risk_score": incident.get("riskScore", incident.get("risk_score", 0))})
+        health = HealthValidator(
+            storage_backend=storage_service.backend,
+            ollama_health=llm_service.health(),
+            websocket_enabled=True,
+        ).check_pipeline_ready()
+        app.state.pipeline_mode = health["pipeline_mode"]
         app.state.bootstrap_transition_task = asyncio.create_task(soc_service.activate_bootstrap_transition())
         app.state.streaming_task = asyncio.create_task(soc_service.run_streaming_updates())
 
@@ -567,12 +632,19 @@ if FastAPI is not None:
                 "storageBackend": storage_service.backend,
                 "backendConnected": True,
                 "modelActive": True,
+                "pipelineMode": app.state.pipeline_mode,
             }
         )
 
     @app.get("/system/health")
     async def system_health():
+        health = HealthValidator(
+            storage_backend=storage_service.backend,
+            ollama_health=llm_service.health(),
+            websocket_enabled=True,
+        ).check_pipeline_ready()
         return success_response({
+            **health,
             "api": "healthy",
             "storage_backend": storage_service.backend,
             "bootstrap_mode": soc_service.response_meta()["bootstrapMode"],
@@ -583,7 +655,9 @@ if FastAPI is not None:
     async def system_models():
         return success_response({
             "models": soc_service.get_detection_feed(),
-            "ollama": {"mode": soc_service.response_meta()["mode"], "available": True},
+            "ollama": llm_service.health(),
+            "ml_runtime": check_ml_runtime(),
+            "pipeline_mode": app.state.pipeline_mode,
         })
 
     @app.get("/system/metrics")
@@ -618,6 +692,15 @@ if FastAPI is not None:
     async def ingest_logs(request: IngestLogsRequest):
         result = await _ingest_and_detect(request.logs)
         return success_response(result, meta={"ingested": len(request.logs), "storageBackend": storage_service.backend})
+
+    @app.post("/system/test-pipeline")
+    async def system_test_pipeline():
+        result = await _ingest_and_detect(_synthetic_test_logs())
+        return success_response({
+            "status": "success",
+            "incident_created": bool(result.get("incidents")),
+            "pipeline_mode": app.state.pipeline_mode,
+        })
 
     @app.get("/metrics")
     async def metrics() -> Response:

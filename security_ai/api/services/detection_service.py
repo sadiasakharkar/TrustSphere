@@ -5,11 +5,10 @@ from pathlib import Path
 import logging
 from typing import Any
 
-import pandas as pd
-
 LOGGER = logging.getLogger(__name__)
 
 from security_ai.api.model_loader import ModelLoader
+from security_ai.api.ml_runtime.safe_import import ML_AVAILABLE, simulate_anomaly_score
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 TRUSTSPHERE_AI_DIR = BASE_DIR / "trustsphere-ai"
@@ -18,7 +17,6 @@ if str(TRUSTSPHERE_AI_DIR) not in sys.path:
     sys.path.insert(0, str(TRUSTSPHERE_AI_DIR))
 
 from src.pipeline.event_normalizer import EventNormalizer
-from src.models.inference_pipeline import UEBAInferencePipeline
 
 
 class DetectionService:
@@ -28,9 +26,13 @@ class DetectionService:
         self._pipeline = None
 
     def _get_pipeline(self) -> UEBAInferencePipeline | None:
+        if not ML_AVAILABLE:
+            return None
         if self._pipeline is not None:
             return self._pipeline
         try:
+            import pandas as pd  # noqa: F401
+            from src.models.inference_pipeline import UEBAInferencePipeline
             self._pipeline = UEBAInferencePipeline(TRUSTSPHERE_AI_DIR / "saved_models")
         except Exception as exc:
             LOGGER.warning("UEBA inference pipeline unavailable, using heuristic detection fallback: %s", exc)
@@ -43,6 +45,7 @@ class DetectionService:
         if pipeline is None:
             return [self._heuristic_result(event.model_dump(mode="json")) for event in normalized]
 
+        import pandas as pd
         frame = pd.DataFrame([event.model_dump(mode="python") for event in normalized])
         frame["timestamp"] = pd.to_datetime(frame["timestamp"], errors="coerce", utc=True).dt.tz_convert(None)
         frame["user"] = frame["user"].astype(str).str.lower()
@@ -78,6 +81,8 @@ class DetectionService:
     def _heuristic_result(self, event: dict[str, Any]) -> dict[str, Any]:
         reason = self._reason_for_action(str(event.get("event_type", "unknown")), event)
         score = 0.35
+        simulated = simulate_anomaly_score(event)
+        score = max(score, simulated)
         if not event.get("login_success", True):
             score += 0.18
         if float(event.get("bytes_sent", 0.0) or 0.0) > 500000:

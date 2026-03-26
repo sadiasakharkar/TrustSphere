@@ -30,6 +30,16 @@ class LLMService:
             LOGGER.warning("LLM reasoning unavailable, using deterministic fallback: %s", exc)
             return self._fallback(anomaly_result, attack_graph, entity_behavior)
 
+    def health(self) -> dict[str, Any]:
+        try:
+            return self.client.health_check()
+        except Exception as exc:
+            return {
+                "service_reachable": False,
+                "model_available": False,
+                "error": str(exc),
+            }
+
     def _build_prompt(self, anomaly_result: dict[str, Any], attack_graph: dict[str, Any], entity_behavior: dict[str, Any], historical_context: dict[str, Any]) -> str:
         return (
             "Return ONLY valid JSON with keys summary, reasoning, attack_stage, confidence, recommended_actions.\n"

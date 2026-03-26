@@ -17,7 +17,7 @@ import { getPlaybooks } from './api/playbook.service.js';
 import { getReportsWorkspace } from './api/report.service.js';
 
 async function fetchHealth() {
-  const response = await fetch(`${getApiBaseUrl()}/health`, {
+  const response = await fetch(`${getApiBaseUrl()}/system/health`, {
     headers: { 'x-api-key': process.env.NEXT_PUBLIC_TRUSTSPHERE_API_KEY || 'trustsphere-local-dev-key' }
   });
   if (!response.ok) throw new Error('Backend unavailable');

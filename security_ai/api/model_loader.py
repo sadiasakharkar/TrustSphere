@@ -7,12 +7,7 @@ import threading
 from pathlib import Path
 import sys
 from typing import Any
-
-from security_ai.detect_credentials import CredentialExposurePredictor
-from security_ai.predict_attachment import AttachmentPredictor
-from security_ai.predict_email import EmailPredictor
-from security_ai.predict_url import URLPhishingPredictor
-from security_ai.prompt_guard import PromptInjectionGuard
+from security_ai.api.ml_runtime.safe_import import ML_AVAILABLE
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 TRUSTSPHERE_AI_DIR = BASE_DIR / "trustsphere-ai"
@@ -39,20 +34,30 @@ class ModelLoader:
                     cls._instance = cls()
         return cls._instance
 
-    def load_email_model(self) -> EmailPredictor:
-        return self._get_or_create("email", EmailPredictor)
+    def load_email_model(self):
+        if not ML_AVAILABLE:
+            raise RuntimeError("ML runtime disabled")
+        return self._get_or_create("email", lambda: __import__("security_ai.predict_email", fromlist=["EmailPredictor"]).EmailPredictor())
 
-    def load_url_model(self) -> URLPhishingPredictor:
-        return self._get_or_create("url", URLPhishingPredictor)
+    def load_url_model(self):
+        if not ML_AVAILABLE:
+            raise RuntimeError("ML runtime disabled")
+        return self._get_or_create("url", lambda: __import__("security_ai.predict_url", fromlist=["URLPhishingPredictor"]).URLPhishingPredictor())
 
-    def load_credential_model(self) -> CredentialExposurePredictor:
-        return self._get_or_create("credential", CredentialExposurePredictor)
+    def load_credential_model(self):
+        if not ML_AVAILABLE:
+            raise RuntimeError("ML runtime disabled")
+        return self._get_or_create("credential", lambda: __import__("security_ai.detect_credentials", fromlist=["CredentialExposurePredictor"]).CredentialExposurePredictor())
 
-    def load_attachment_model(self) -> AttachmentPredictor:
-        return self._get_or_create("attachment", AttachmentPredictor)
+    def load_attachment_model(self):
+        if not ML_AVAILABLE:
+            raise RuntimeError("ML runtime disabled")
+        return self._get_or_create("attachment", lambda: __import__("security_ai.predict_attachment", fromlist=["AttachmentPredictor"]).AttachmentPredictor())
 
-    def load_prompt_guard_model(self) -> PromptInjectionGuard:
-        return self._get_or_create("prompt_guard", PromptInjectionGuard)
+    def load_prompt_guard_model(self):
+        if not ML_AVAILABLE:
+            raise RuntimeError("ML runtime disabled")
+        return self._get_or_create("prompt_guard", lambda: __import__("security_ai.prompt_guard", fromlist=["PromptInjectionGuard"]).PromptInjectionGuard())
 
     def load_anomaly_model(self) -> dict[str, Any]:
         return self._get_or_create("ueba_anomaly", lambda: {"status": "available", "source": str(Path('trustsphere-ai/saved_models'))})
@@ -75,11 +80,17 @@ class ModelLoader:
         return self._get_or_create("trustsphere_pipeline", factory)
 
     def warmup(self) -> None:
-        self.load_email_model()
-        self.load_url_model()
-        self.load_credential_model()
-        self.load_attachment_model()
-        self.load_prompt_guard_model()
+        for loader in [
+            self.load_email_model,
+            self.load_url_model,
+            self.load_credential_model,
+            self.load_attachment_model,
+            self.load_prompt_guard_model,
+        ]:
+            try:
+                loader()
+            except Exception:
+                continue
 
     def _get_or_create(self, key: str, factory) -> Any:
         with self._lock:

@@ -2,7 +2,6 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../services/api/apiClient';
-import { probeBackend } from '../../services/dataProvider';
 import StatusIndicator from './StatusIndicator';
 
 export default function SocTopbar({ onMenu }) {
@@ -10,10 +9,11 @@ export default function SocTopbar({ onMenu }) {
   const router = useRouter();
   const [now, setNow] = useState('');
   const [modeStatus, setModeStatus] = useState({
-    bootstrapMode: true,
-    mode: 'bootstrap',
+    pipeline: 'ready',
+    pipelineMode: 'HYBRID_MODE',
     backendConnected: false,
-    modelActive: false
+    modelActive: false,
+    fallbackMode: true,
   });
 
   useEffect(() => {
@@ -35,30 +35,29 @@ export default function SocTopbar({ onMenu }) {
     let active = true;
     const loadStatus = async () => {
       try {
-        const [healthResponse, probe] = await Promise.all([
-          apiRequest('/health'),
-          probeBackend()
-        ]);
+        const response = await apiRequest('/system/health');
         if (!active) return;
         setModeStatus({
-          bootstrapMode: Boolean(healthResponse.data?.bootstrapMode ?? !probe.connected),
-          mode: healthResponse.data?.mode || (probe.connected ? 'live' : 'bootstrap'),
-          backendConnected: probe.connected,
-          modelActive: Boolean(probe.connected && (healthResponse.data?.mode === 'live' || healthResponse.data?.modelActive || healthResponse.data?.status === 'ok'))
+          pipeline: response.data?.pipeline || 'degraded',
+          pipelineMode: response.data?.pipeline_mode || 'HYBRID_MODE',
+          backendConnected: true,
+          modelActive: Boolean(response.data?.ml_runtime || response.data?.ollama),
+          fallbackMode: Boolean(response.data?.fallback_mode),
         });
       } catch {
         if (active) {
           setModeStatus({
-            bootstrapMode: true,
-            mode: 'bootstrap',
+            pipeline: 'degraded',
+            pipelineMode: 'SIMULATION_MODE',
             backendConnected: false,
-            modelActive: false
+            modelActive: false,
+            fallbackMode: true,
           });
         }
       }
     };
     loadStatus();
-    const timer = window.setInterval(loadStatus, 2000);
+    const timer = window.setInterval(loadStatus, 10000);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -82,7 +81,7 @@ export default function SocTopbar({ onMenu }) {
           Live {now}
         </div>
         <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 xl:flex">
-          <StatusIndicator status={modeStatus.bootstrapMode ? 'Demo mode' : 'Live AI mode'} pulse={modeStatus.bootstrapMode} />
+          <StatusIndicator status={modeStatus.pipelineMode === 'LIVE_MODE' ? 'LIVE AI' : modeStatus.pipelineMode === 'SIMULATION_MODE' ? 'SIMULATION MODE' : 'HYBRID MODE'} pulse={modeStatus.pipelineMode !== 'LIVE_MODE'} />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
           <StatusIndicator status={modeStatus.backendConnected ? 'Backend connected' : 'Backend offline'} pulse={!modeStatus.backendConnected} />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Any
 
+LOGGER = logging.getLogger(__name__)
 
 class IncidentStreamBroker:
     def __init__(self) -> None:
@@ -21,6 +23,7 @@ class IncidentStreamBroker:
 
     async def broadcast(self, event: dict[str, Any]) -> None:
         message = json.dumps(event, default=str)
+        LOGGER.info("[PIPELINE] websocket ✔ event=%s", event.get("type", "unknown"))
         async with self._lock:
             clients = list(self._clients)
         stale = []
