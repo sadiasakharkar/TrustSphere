@@ -134,7 +134,6 @@ export default function OverviewPage() {
             actions={
               <>
                 <Link href="/email" className="soc-btn-primary">Email analyzer</Link>
-                <button className="soc-btn-secondary">Last 24h</button>
                 <Link href="/monitoring" className="soc-btn-secondary">Open monitoring</Link>
               </>
             }

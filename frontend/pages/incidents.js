@@ -73,7 +73,6 @@ export default function IncidentsPage() {
             description="Prioritize incidents by severity and SLA, then pivot into the detailed case view for evidence validation and response decisions."
             actions={
               <>
-                <button className="soc-btn-secondary">Assigned to me</button>
                 {focusIncident?.summary?.id ? <Link href={`/incident/${focusIncident.summary.id}`} className="soc-btn-primary">Review top case</Link> : null}
               </>
             }
