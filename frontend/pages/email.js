@@ -9,7 +9,7 @@ import StatusBadge from '../components/soc/StatusBadge';
 import { analyzeEmail, clearEmailHistory, getEmailHistory, getInboxEmails } from '../services/api/email.service';
 
 function mapHistory(items = []) {
-  return [...items].reverse().map((entry, index) => ({
+  return items.map((entry, index) => ({
     id: `${entry.time || 'history'}-${index}`,
     subject: entry.input || 'Analyzed email',
     bodySnippet: entry.input || '',
@@ -63,7 +63,10 @@ export default function EmailPage() {
     setError('');
     try {
       setSelectedEmail(emailRecord);
-      const nextResult = await analyzeEmail(emailRecord.body);
+      const nextResult = await analyzeEmail(emailRecord.body, {
+        subject: emailRecord.subject,
+        sender: emailRecord.sender,
+      });
       setResult(nextResult);
       await fetchHistory();
     } catch (err) {
@@ -82,7 +85,10 @@ export default function EmailPage() {
     setLoading(true);
     setError('');
     try {
-      const nextResult = await analyzeEmail(emailInput);
+      const nextResult = await analyzeEmail(emailInput, {
+        subject: 'Manual email submission',
+        sender: 'manual@local.demo',
+      });
       setResult(nextResult);
       setEmailInput('');
       await fetchHistory();

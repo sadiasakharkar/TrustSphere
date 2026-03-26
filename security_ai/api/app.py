@@ -30,6 +30,7 @@ except Exception:
     JSONResponse = object
 
 from security_ai.api.core.auth import create_token, decode_token
+from security_ai.api.email_store import build_email_analysis, clear_history as clear_email_history, get_history as get_email_history, get_inbox, save_history as save_email_history
 from security_ai.api.ml_runtime.safe_import import ML_AVAILABLE, check_ml_runtime
 from security_ai.api.model_loader import ModelLoader
 from security_ai.api.pipeline.execution_mode import HYBRID_MODE, LIVE_MODE, SIMULATION_MODE
@@ -114,6 +115,12 @@ class AuthRefreshRequest(BaseModel):
 
 class IngestLogsRequest(BaseModel):
     logs: list[dict[str, Any]]
+
+
+class EmailAnalyzerRequest(BaseModel):
+    input: str = ""
+    subject: str = ""
+    sender: str = "unknown@example.com"
 
 
 class PlaybookExecutionRequest(BaseModel):
@@ -711,6 +718,44 @@ if FastAPI is not None:
     async def detect_email(request: EmailDetectionRequest):
         result = await services.detect_email(request.model_dump())
         return success_response(result)
+
+    @app.get("/api/email/inbox")
+    async def email_inbox():
+        rows = get_inbox()
+        return success_response(rows, meta={"count": len(rows)})
+
+    @app.get("/api/email/history")
+    async def email_history():
+        rows = list(reversed(get_email_history()))
+        return success_response(rows, meta={"count": len(rows)})
+
+    @app.delete("/api/email/history")
+    async def delete_email_history():
+        clear_email_history()
+        return success_response({"status": "cleared"}, meta={"message": "Email history cleared."})
+
+    @app.post("/api/email/analyze")
+    async def analyze_email_module(request: EmailAnalyzerRequest):
+        detector_result = await services.detect_email({
+            "email_text": request.input,
+            "subject": request.subject,
+            "body": request.input,
+            "sender": request.sender,
+        })
+        analysis = build_email_analysis(
+            detector_result,
+            email_text=request.input,
+            subject=request.subject,
+            sender=request.sender,
+        )
+        save_email_history(analysis)
+        return success_response({
+            "risk_score": analysis["risk_score"],
+            "severity": analysis["severity"],
+            "models": analysis["models"],
+            "actions_taken": analysis["actions"],
+            "label": analysis["label"],
+        }, meta={"message": "Email analyzed."})
 
     @app.post("/detect/url")
     async def detect_url(request: URLDetectionRequest):
