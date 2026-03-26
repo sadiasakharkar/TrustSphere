@@ -18,6 +18,8 @@ export default function ActionRecommendationPanel({
   plan,
   executingActionId = '',
   executionMessage = '',
+  actionDisabled = false,
+  actionDisabledReason = '',
   onExecuteAction,
   onExecutePlaybook
 }) {
@@ -81,21 +83,25 @@ export default function ActionRecommendationPanel({
               type="button"
               className="soc-btn-primary"
               onClick={() => onExecuteAction?.(recommended)}
-              disabled={executingActionId === recommended.id}
+              disabled={actionDisabled || executingActionId === recommended.id}
+              title={actionDisabled ? actionDisabledReason : ''}
             >
-              {executingActionId === recommended.id ? 'Executing...' : 'Execute recommended action'}
+              {actionDisabled ? 'Live sync required' : executingActionId === recommended.id ? 'Executing...' : 'Execute recommended action'}
             </button>
             {playbook ? (
               <button
                 type="button"
                 className="soc-btn-secondary"
                 onClick={() => onExecutePlaybook?.(playbook)}
+                disabled={actionDisabled || executingActionId === playbook.id}
+                title={actionDisabled ? actionDisabledReason : ''}
               >
-                Run {playbook.name}
+                {actionDisabled ? 'Live sync required' : `Run ${playbook.name}`}
               </button>
             ) : null}
           </div>
           {executionMessage ? <p className="mt-3 text-sm text-[#adc6ff]">{executionMessage}</p> : null}
+          {actionDisabled && actionDisabledReason ? <p className="mt-3 text-sm text-[#ffb3ad]">{actionDisabledReason}</p> : null}
         </div>
 
         <div className="space-y-4">
@@ -113,9 +119,10 @@ export default function ActionRecommendationPanel({
                       type="button"
                       className="soc-btn-ghost"
                       onClick={() => onExecuteAction?.(action)}
-                      disabled={executingActionId === action.id}
+                      disabled={actionDisabled || executingActionId === action.id}
+                      title={actionDisabled ? actionDisabledReason : ''}
                     >
-                      {executingActionId === action.id ? 'Executing...' : 'Run'}
+                      {actionDisabled ? 'Offline' : executingActionId === action.id ? 'Executing...' : 'Run'}
                     </button>
                   </div>
                   <p className="mt-2 text-sm leading-6 soc-text-muted">{action.whyNotBest}</p>
