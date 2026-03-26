@@ -17,6 +17,11 @@ export async function analyzeEmail(input) {
   return parseResponse(response);
 }
 
+export async function getInboxEmails() {
+  const response = await fetch(`${getApiBaseUrl()}/emails`);
+  return parseResponse(response);
+}
+
 export async function getEmailHistory() {
   const response = await fetch(`${getApiBaseUrl()}/history`);
   return parseResponse(response);

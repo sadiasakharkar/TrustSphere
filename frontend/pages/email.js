@@ -6,7 +6,7 @@ import EmailHistoryTable from '../components/soc/EmailHistoryTable';
 import PageContainer from '../components/soc/PageContainer';
 import PageHeader from '../components/soc/PageHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { analyzeEmail, clearEmailHistory, getEmailHistory } from '../services/api/email.service';
+import { analyzeEmail, clearEmailHistory, getEmailHistory, getInboxEmails } from '../services/api/email.service';
 
 function mapHistory(items = []) {
   return [...items].reverse().map((entry, index) => ({
@@ -21,11 +21,22 @@ function mapHistory(items = []) {
 }
 
 export default function EmailPage() {
-  const [email, setEmail] = useState('');
+  const [emails, setEmails] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState(null);
   const [result, setResult] = useState(null);
   const [history, setHistory] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const fetchEmails = async () => {
+    try {
+      const inbox = await getInboxEmails();
+      setEmails(inbox);
+      setSelectedEmail((current) => current || inbox[0] || null);
+    } catch (err) {
+      setError(err.message || 'Unable to load inbox.');
+    }
+  };
 
   const fetchHistory = async () => {
     try {
@@ -37,21 +48,22 @@ export default function EmailPage() {
   };
 
   useEffect(() => {
+    fetchEmails();
     fetchHistory();
   }, []);
 
-  const handleAnalyze = async () => {
-    if (!email.trim()) {
-      setError('Paste an email before running analysis.');
+  const handleAnalyze = async (emailRecord = selectedEmail) => {
+    if (!emailRecord?.body) {
+      setError('Select an inbox email before running analysis.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      const nextResult = await analyzeEmail(email);
+      setSelectedEmail(emailRecord);
+      const nextResult = await analyzeEmail(emailRecord.body);
       setResult(nextResult);
-      setEmail('');
       await fetchHistory();
     } catch (err) {
       setError(err.message || 'Unable to analyze email.');
@@ -77,30 +89,64 @@ export default function EmailPage() {
           <PageHeader
             kicker="Email Analyzer"
             title="Email Analysis Module"
-            description="Submit suspicious emails for scoring, review response actions, and monitor persistent history like a SOC investigation queue."
+            description="Review incoming inbox messages, trigger email threat analysis with one click, and monitor persistent history like an enterprise SOC console."
             actions={<Link href="/overview" className="soc-btn-secondary">Back to overview</Link>}
           />
 
           <div className="space-y-6">
-            <section className="soc-panel">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="soc-kicker">Input</p>
-                  <h2 className="mt-2 text-base font-semibold text-white">Paste email content</h2>
+            <section className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
+              <section className="soc-panel">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="soc-kicker">Inbox</p>
+                    <h2 className="mt-2 text-base font-semibold text-white">Incoming email stream</h2>
+                  </div>
+                  <StatusBadge tone="medium">{emails.length} loaded</StatusBadge>
                 </div>
-                <button className="soc-btn-primary" onClick={handleAnalyze} disabled={loading}>
-                  {loading ? 'Analyzing...' : 'Analyze email'}
-                </button>
-              </div>
+                <div className="mt-5 space-y-3">
+                  {emails.map((mail) => {
+                    const active = selectedEmail?.id === mail.id;
+                    return (
+                      <button
+                        key={mail.id}
+                        className={`w-full rounded-2xl border px-4 py-4 text-left transition ${active ? 'border-[#4b8eff] bg-[rgba(75,142,255,0.14)]' : 'border-[rgba(65,71,85,0.45)] bg-[rgba(16,20,26,0.86)] hover:border-[rgba(75,142,255,0.5)]'}`}
+                        onClick={() => handleAnalyze(mail)}
+                      >
+                        <p className="text-sm font-semibold text-white">{mail.sender}</p>
+                        <p className="mt-1 text-sm leading-6 text-white">{mail.subject}</p>
+                        <p className="mt-2 text-xs soc-text-muted">{mail.body.length > 96 ? `${mail.body.slice(0, 96)}...` : mail.body}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
 
-              <textarea
-                className="mt-5 min-h-[180px] w-full rounded-2xl border border-[rgba(65,71,85,0.45)] bg-[rgba(16,20,26,0.86)] px-4 py-4 text-sm leading-6 text-white outline-none transition focus:border-[#4b8eff]"
-                placeholder="Paste suspicious email content here..."
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
+              <section className="soc-panel">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="soc-kicker">Selected Email</p>
+                    <h2 className="mt-2 text-base font-semibold text-white">{selectedEmail?.subject || 'Choose an inbox email'}</h2>
+                  </div>
+                  <button className="soc-btn-primary" onClick={() => handleAnalyze(selectedEmail)} disabled={loading || !selectedEmail}>
+                    {loading ? 'Analyzing...' : 'Analyze selected'}
+                  </button>
+                </div>
 
-              {error ? <p className="mt-3 text-sm text-[#ffb3ad]">{error}</p> : null}
+                <div className="mt-5 grid gap-4 lg:grid-cols-[0.72fr,1.28fr]">
+                  <div className="soc-panel-muted">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Sender</p>
+                    <p className="mt-2 text-sm text-white">{selectedEmail?.sender || 'Unavailable'}</p>
+                    <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Subject</p>
+                    <p className="mt-2 text-sm text-white">{selectedEmail?.subject || 'Unavailable'}</p>
+                  </div>
+                  <div className="soc-panel-muted">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Body</p>
+                    <p className="mt-2 text-sm leading-7 soc-text-muted">{selectedEmail?.body || 'Select an email from the inbox to inspect its contents.'}</p>
+                  </div>
+                </div>
+
+                {error ? <p className="mt-4 text-sm text-[#ffb3ad]">{error}</p> : null}
+              </section>
             </section>
 
             {result ? (
