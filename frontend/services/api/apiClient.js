@@ -1,14 +1,14 @@
 import { envelopeTimestamp, unwrapApiEnvelope } from './contracts';
 import { isDemoModeEnabled, resolveDemoFallback } from './demoFallbacks';
 
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000';
+const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
 const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_TRUSTSPHERE_API_KEY || 'trustsphere-local-dev-key';
 const DEFAULT_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS || 12000);
 const DEFAULT_RETRIES = 1;
 const DEMO_MODE = isDemoModeEnabled();
 
 function resolveBaseUrl() {
-  return DEFAULT_BASE_URL.replace(/\/+$/, '');
+  return String(DEFAULT_BASE_URL || '').replace(/\/+$/, '');
 }
 
 function getStoredToken() {
