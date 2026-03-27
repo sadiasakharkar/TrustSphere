@@ -16,8 +16,9 @@ const roleViews = {
   employee: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
-      { href: '/email', label: 'Email Risk', icon: 'mail' },
-      { href: '/monitoring', label: 'Basic Alerts', icon: 'warning' }
+      { href: '/monitoring', label: 'My Alerts', icon: 'monitoring' },
+      { href: '/email', label: 'Request Analysis', icon: 'upload_file' },
+      { href: '/postman', label: 'Postman', icon: 'send' }
     ]
   },
   analyst: {
@@ -28,14 +29,8 @@ const roleViews = {
       { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
       { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
       { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
-      { href: '/analytics', label: 'AI Insights', icon: 'psychology' }
-    ]
-  },
-  employee: {
-    sidebar: [
-      { href: '/overview', label: 'Overview', icon: 'dashboard' },
-      { href: '/monitoring', label: 'My Alerts', icon: 'monitoring' },
-      { href: '/email', label: 'Request Analysis', icon: 'upload_file' }
+      { href: '/analytics', label: 'AI Insights', icon: 'psychology' },
+      { href: '/postman', label: 'Postman', icon: 'send' }
     ]
   },
   admin: {
@@ -46,7 +41,8 @@ const roleViews = {
       { href: '/administration', label: 'User Management', icon: 'group' },
       { href: '/monitoring', label: 'Data Sources', icon: 'lan' },
       { href: '/reports', label: 'Compliance Logs', icon: 'fact_check' },
-      { href: '/settings', label: 'Configuration', icon: 'settings' }
+      { href: '/settings', label: 'Configuration', icon: 'settings' },
+      { href: '/postman', label: 'Postman', icon: 'send' }
     ]
   }
 };
