@@ -1,7 +1,7 @@
-const DEFAULT_AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL || 'http://127.0.0.1:5000';
+const DEFAULT_AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL || '';
 
 function resolveAuthBaseUrl() {
-  return DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '');
+  return DEFAULT_AUTH_BASE_URL ? DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '') : '';
 }
 
 async function parseResponse(response) {
@@ -60,5 +60,5 @@ export async function getCurrentUser(token) {
 }
 
 export function getAuthBaseUrl() {
-  return resolveAuthBaseUrl();
+  return resolveAuthBaseUrl() || 'same-origin /api';
 }
