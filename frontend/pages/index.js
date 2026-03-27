@@ -61,9 +61,6 @@ export default function HomePage() {
               <div className="mb-8">
                 <p className="soc-kicker">Authorization Required</p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Enter the SOC workspace</h2>
-                <p className="mt-3 text-sm leading-7 soc-text-muted">
-                  Use a role-based local session. No external identity provider is required for this prototype.
-                </p>
               </div>
               <form className="space-y-5" onSubmit={handleSubmit}>
                 <div>
@@ -95,11 +92,6 @@ export default function HomePage() {
                 <Link href="/signup" className="font-semibold text-white underline decoration-[rgba(140,180,255,0.45)] underline-offset-4">
                   Sign up
                 </Link>
-                <div className="mt-3">
-                  <Link href="/login" className="text-[rgba(193,198,215,0.78)] transition hover:text-white">
-                    Open full login page
-                  </Link>
-                </div>
               </div>
             </section>
           </div>
