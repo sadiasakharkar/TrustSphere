@@ -26,9 +26,19 @@ const userSchema = new mongoose.Schema(
       required: [true, "Role is required"],
       lowercase: true,
     },
+    riskScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
   },
   {
-    timestamps: { createdAt: true, updatedAt: false },
+    timestamps: { createdAt: true, updatedAt: true },
   }
 );
 

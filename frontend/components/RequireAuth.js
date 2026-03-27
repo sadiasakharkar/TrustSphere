@@ -1,11 +1,12 @@
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getDefaultRouteForRole } from '../utils/authRedirects';
 
-export default function RequireAuth({ children, adminOnly = false }) {
+export default function RequireAuth({ children, adminOnly = false, allowedRoles = null }) {
   const { session, isAdmin, authReady } = useAuth();
   const router = useRouter();
-  const allowedRoles = adminOnly ? ['admin'] : null;
+  const resolvedAllowedRoles = adminOnly ? ['admin'] : allowedRoles;
 
   useEffect(() => {
     if (!authReady) return;
@@ -13,14 +14,14 @@ export default function RequireAuth({ children, adminOnly = false }) {
       router.replace('/login');
       return;
     }
-    if (allowedRoles && !allowedRoles.includes(session.role)) {
-      router.replace('/overview');
+    if (resolvedAllowedRoles && !resolvedAllowedRoles.includes(session.role)) {
+      router.replace(getDefaultRouteForRole(session.role));
     }
-  }, [allowedRoles, authReady, isAdmin, router, session.loggedIn, session.role]);
+  }, [resolvedAllowedRoles, authReady, isAdmin, router, session.loggedIn, session.role]);
 
   if (!authReady) return null;
   if (!session.loggedIn) return null;
-  if (allowedRoles && !allowedRoles.includes(session.role)) return null;
+  if (resolvedAllowedRoles && !resolvedAllowedRoles.includes(session.role)) return null;
 
   return children;
 }

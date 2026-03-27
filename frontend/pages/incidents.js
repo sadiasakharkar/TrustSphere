@@ -64,7 +64,7 @@ export default function IncidentsPage() {
   }, [focusId]);
 
   return (
-    <RequireAuth>
+    <RequireAuth allowedRoles={['admin', 'analyst']}>
       <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader

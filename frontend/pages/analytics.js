@@ -21,7 +21,7 @@ export default function AnalyticsPage() {
   const { data } = useHybridData('analytics', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
 
   return (
-    <RequireAuth>
+    <RequireAuth allowedRoles={['admin', 'analyst']}>
       <Layout>
         <PageContainer>
           <SectionHeader

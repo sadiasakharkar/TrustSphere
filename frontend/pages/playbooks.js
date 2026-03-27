@@ -33,7 +33,7 @@ export default function PlaybooksPage() {
   }, []);
 
   return (
-    <RequireAuth>
+    <RequireAuth allowedRoles={['admin', 'analyst']}>
       <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader

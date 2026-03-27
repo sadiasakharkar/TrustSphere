@@ -40,7 +40,7 @@ export default function ReportsPage() {
   }, []);
 
   return (
-    <RequireAuth>
+    <RequireAuth adminOnly>
       <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader eyebrow="Reports" title="Incident Reports" description="Review and export backend-generated SOC reports." actions={<Link href="/overview" className="soc-btn-secondary">Return to overview</Link>} />

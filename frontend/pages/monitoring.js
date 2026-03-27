@@ -7,6 +7,7 @@ import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
+import { useAuth } from '../context/AuthContext';
 import { getWorkflowInsight } from '../services/api/insight.service';
 import { useHybridData } from '../hooks/useHybridData';
 
@@ -20,6 +21,7 @@ const eventColumns = [
 
 export default function MonitoringPage() {
   const [insight, setInsight] = useState(null);
+  const { session } = useAuth();
   const { data } = useHybridData('monitoring', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
   const events = data?.events || [];
   const detectors = data?.detectors || [];
@@ -50,8 +52,12 @@ export default function MonitoringPage() {
           <SectionHeader
             eyebrow="Monitoring"
             title="Live Security Monitoring"
-            description="Review the latest security events and detector posture using backend-driven telemetry."
-            actions={<Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
+            description={session.role === 'employee'
+              ? 'Review your latest alerts and personal risk posture using backend-driven telemetry.'
+              : 'Review the latest security events and detector posture using backend-driven telemetry.'}
+            actions={session.role === 'employee'
+              ? <Link href="/email" className="soc-btn-primary">Analyze email</Link>
+              : <Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
           />
 
           {!data ? <LoadingSkeleton rows={5} /> : (

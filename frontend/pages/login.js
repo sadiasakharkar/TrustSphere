@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { getAuthBaseUrl, loginUser } from '../services/api/auth.service';
+import { getDefaultRouteForRole } from '../utils/authRedirects';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,7 +49,7 @@ export default function LoginPage() {
         role: userRole,
         token: response.token || '',
       });
-      router.push('/overview');
+      router.push(getDefaultRouteForRole(userRole));
     } catch (nextError) {
       setError(nextError.message || `Authentication failed. Auth server: ${getAuthBaseUrl()}`);
     } finally {

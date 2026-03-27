@@ -23,6 +23,9 @@ exports.protect = async (req, res, next) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      riskScore: user.riskScore,
+      lastLogin: user.lastLogin,
+      createdAt: user.createdAt,
     };
 
     return next();
@@ -44,3 +47,6 @@ exports.authorize = (...roles) => {
     return next();
   };
 };
+
+exports.authenticateUser = exports.protect;
+exports.authorizeRoles = exports.authorize;

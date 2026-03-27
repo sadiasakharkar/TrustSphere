@@ -171,7 +171,7 @@ export default function IncidentDetailPage() {
   };
 
   return (
-    <RequireAuth>
+    <RequireAuth allowedRoles={['admin', 'analyst']}>
       <Layout insightSummary={insight}>
         {!incident ? <LoadingSkeleton rows={6} /> : (
           <PageContainer>

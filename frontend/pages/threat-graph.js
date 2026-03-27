@@ -33,7 +33,7 @@ export default function ThreatGraphPage() {
   }, []);
 
   return (
-    <RequireAuth>
+    <RequireAuth allowedRoles={['admin', 'analyst']}>
       <Layout insightSummary={insight}>
         <PageContainer>
           <SectionHeader

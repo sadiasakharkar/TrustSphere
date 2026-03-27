@@ -5,6 +5,7 @@ const connectDB = require("./config/db");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const authRoutes = require("./routes/authRoutes");
 const accessRoutes = require("./routes/accessRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.get("/", async (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api", accessRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/analytics", analyticsRoutes);
 
 app.use((req, res) => {

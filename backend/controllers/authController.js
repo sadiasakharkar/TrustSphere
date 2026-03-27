@@ -16,7 +16,7 @@ function generateToken(user) {
 
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, riskScore } = req.body;
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: "Name, email, password, and role are required." });
@@ -24,17 +24,26 @@ exports.signup = async (req, res) => {
 
     const normalizedEmail = String(email).toLowerCase().trim();
     const normalizedRole = String(role).toLowerCase().trim();
+    const allowedRoles = ["admin", "analyst", "employee"];
+
+    if (!allowedRoles.includes(normalizedRole)) {
+      return res.status(400).json({ message: "Role must be admin, analyst, or employee." });
+    }
 
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(409).json({ message: "A user with this email already exists." });
     }
 
+    const parsedRiskScore = Number(riskScore);
+    const normalizedRiskScore = Number.isFinite(parsedRiskScore) ? Math.max(0, Math.min(parsedRiskScore, 100)) : 0;
+
     const user = await User.create({
       name: String(name).trim(),
       email: normalizedEmail,
       password,
       role: normalizedRole,
+      riskScore: normalizedRole === "employee" ? normalizedRiskScore : 0,
     });
 
     return res.status(201).json({
@@ -44,6 +53,7 @@ exports.signup = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        riskScore: user.riskScore,
         createdAt: user.createdAt,
       },
     });
@@ -76,6 +86,9 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
+    user.lastLogin = new Date();
+    await user.save();
+
     const token = generateToken(user);
 
     return res.status(200).json({
@@ -86,6 +99,8 @@ exports.login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        riskScore: user.riskScore,
+        lastLogin: user.lastLogin,
       },
     });
   } catch (error) {
