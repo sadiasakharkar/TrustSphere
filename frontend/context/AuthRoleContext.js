@@ -3,11 +3,11 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const AuthRoleContext = createContext(null);
 
 const defaultSession = {
-  name: '',
-  username: '',
-  email: '',
+  name: 'Demo Analyst',
+  username: 'demo.analyst',
+  email: 'demo@trustsphere.local',
   role: 'analyst',
-  loggedIn: false
+  loggedIn: true
 };
 
 const roleViews = {
@@ -58,22 +58,25 @@ export function AuthRoleProvider({ children }) {
     if (typeof window === 'undefined') return undefined;
     const raw = window.localStorage.getItem('trustsphere.session');
     if (!raw) {
+      window.localStorage.setItem('trustsphere.session', JSON.stringify(defaultSession));
+      setSession(defaultSession);
       setAuthReady(true);
       return undefined;
     }
     try {
       const parsed = JSON.parse(raw);
-      if (parsed?.username) {
-        setSession({
-          name: parsed?.name || parsed.username,
-          username: parsed.username,
-          email: parsed?.email || '',
-          role: normalizeRole(parsed.role),
-          loggedIn: true
-        });
-      }
+      const nextSession = parsed?.username ? {
+        name: parsed?.name || parsed.username,
+        username: parsed.username,
+        email: parsed?.email || '',
+        role: normalizeRole(parsed.role),
+        loggedIn: true
+      } : defaultSession;
+      setSession(nextSession);
+      window.localStorage.setItem('trustsphere.session', JSON.stringify(nextSession));
     } catch {
-      window.localStorage.removeItem('trustsphere.session');
+      window.localStorage.setItem('trustsphere.session', JSON.stringify(defaultSession));
+      setSession(defaultSession);
     } finally {
       setAuthReady(true);
     }
@@ -96,7 +99,7 @@ export function AuthRoleProvider({ children }) {
   const logout = () => {
     setSession(defaultSession);
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem('trustsphere.session');
+      window.localStorage.setItem('trustsphere.session', JSON.stringify(defaultSession));
     }
   };
 

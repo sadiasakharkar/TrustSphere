@@ -5,7 +5,7 @@ import { getDefaultRouteForRole } from '../utils/authRedirects';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, authReady } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('analyst');
@@ -15,6 +15,11 @@ export default function LoginPage() {
     const routeRole = String(router.query.role || '').toLowerCase();
     if (['admin', 'analyst', 'employee'].includes(routeRole)) setRole(routeRole);
   }, [router.query.role]);
+
+  useEffect(() => {
+    if (!authReady) return;
+    router.replace('/overview');
+  }, [authReady, router]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

@@ -10,17 +10,12 @@ export default function RequireAuth({ children, adminOnly = false }) {
 
   useEffect(() => {
     if (!authReady) return;
-    if (!session.loggedIn) {
-      router.replace('/login');
-      return;
-    }
     if (allowedRoles && !allowedRoles.includes(session.role)) {
       router.replace(getDefaultRouteForRole(session.role));
     }
   }, [allowedRoles, authReady, isAdmin, router, session.loggedIn, session.role]);
 
   if (!authReady) return null;
-  if (!session.loggedIn) return null;
   if (allowedRoles && !allowedRoles.includes(session.role)) return null;
 
   return children;

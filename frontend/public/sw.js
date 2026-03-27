@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'trustsphere-static-v1';
-const RUNTIME_CACHE = 'trustsphere-runtime-v1';
+const STATIC_CACHE = 'trustsphere-static-v2';
+const RUNTIME_CACHE = 'trustsphere-runtime-v2';
 const APP_SHELL = [
   '/',
   '/overview',

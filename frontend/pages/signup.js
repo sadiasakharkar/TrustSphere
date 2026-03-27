@@ -1,16 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { getDefaultRouteForRole } from '../utils/authRedirects';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, authReady } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('analyst');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!authReady) return;
+    router.replace('/overview');
+  }, [authReady, router]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
