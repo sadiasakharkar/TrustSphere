@@ -1,28 +1,11 @@
-const DEFAULT_AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL || '';
-
-function shouldUseSameOrigin(baseUrl) {
-  if (!baseUrl) return true;
-
-  if (typeof window === 'undefined') {
-    return false;
-  }
-
-  try {
-    const resolved = new URL(baseUrl, window.location.origin);
-    const isLocalAuthHost = ['127.0.0.1', 'localhost'].includes(resolved.hostname);
-    const isLocalAppHost = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
-    return isLocalAuthHost && !isLocalAppHost;
-  } catch {
-    return false;
-  }
-}
+const DEFAULT_AUTH_BASE_URL =
+  process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://127.0.0.1:8000';
+const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_TRUSTSPHERE_API_KEY || 'trustsphere-local-dev-key';
 
 function resolveAuthBaseUrl() {
-  const baseUrl = DEFAULT_AUTH_BASE_URL ? DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '') : '';
-  if (shouldUseSameOrigin(baseUrl)) {
-    return '';
-  }
-  return baseUrl;
+  return DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '');
 }
 
 async function parseResponse(response) {
@@ -40,13 +23,16 @@ async function authRequest(path, payload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'x-api-key': DEFAULT_API_KEY,
     },
     body: JSON.stringify(payload),
   });
 
-  const data = await parseResponse(response);
-  if (!response.ok) {
-    throw new Error(data?.message || 'Authentication request failed.');
+  const payloadData = await parseResponse(response);
+  const data = payloadData?.data ?? payloadData;
+  const errorMessage = payloadData?.error || data?.message || 'Authentication request failed.';
+  if (!response.ok || payloadData?.success === false) {
+    throw new Error(errorMessage);
   }
 
   return data;
@@ -57,29 +43,32 @@ async function authGet(path, token) {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
+      'x-api-key': DEFAULT_API_KEY,
     },
   });
 
-  const data = await parseResponse(response);
-  if (!response.ok) {
-    throw new Error(data?.message || 'Authentication request failed.');
+  const payloadData = await parseResponse(response);
+  const data = payloadData?.data ?? payloadData;
+  const errorMessage = payloadData?.error || data?.message || 'Authentication request failed.';
+  if (!response.ok || payloadData?.success === false) {
+    throw new Error(errorMessage);
   }
 
   return data;
 }
 
 export async function signupUser(payload) {
-  return authRequest('/api/auth/signup', payload);
+  return authRequest('/auth/signup', payload);
 }
 
 export async function loginUser(payload) {
-  return authRequest('/api/auth/login', payload);
+  return authRequest('/auth/login', payload);
 }
 
 export async function getCurrentUser(token) {
-  return authGet('/api/auth/me', token);
+  return authGet('/auth/me', token);
 }
 
 export function getAuthBaseUrl() {
-  return resolveAuthBaseUrl() || 'same-origin /api';
+  return resolveAuthBaseUrl();
 }
