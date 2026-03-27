@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { signupUser } from '../services/api/auth.service';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -21,13 +20,7 @@ export default function SignupPage() {
     setError('');
     setSuccess('');
     try {
-      await signupUser({
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        role,
-      });
-      setSuccess('Account created successfully. You can now sign in.');
+      setSuccess('Demo account prepared successfully. You can now sign in with the selected role.');
       setTimeout(() => router.push(`/login?role=${role}`), 900);
     } catch (nextError) {
       setError(nextError.message || 'Unable to create account.');
@@ -45,7 +38,7 @@ export default function SignupPage() {
         <section className="hidden lg:block">
           <h1 className="font-headline text-6xl font-extrabold tracking-tight text-white">TrustSphere</h1>
           <p className="mt-4 max-w-lg text-lg leading-8 soc-text-muted">
-            Create a real role-based account for admin, analyst, or employee access.
+            Create a demo role profile for admin, analyst, or employee access.
           </p>
         </section>
         <section className="soc-glass mx-auto w-full max-w-md p-8 shadow-card">
@@ -53,7 +46,7 @@ export default function SignupPage() {
             <div>
               <p className="soc-kicker">Create Access</p>
               <h2 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white">Sign up for the SOC workspace</h2>
-              <p className="mt-2 text-sm soc-text-muted">Create a role-based account stored by the TrustSphere backend for demo-ready login access.</p>
+              <p className="mt-2 text-sm soc-text-muted">Demo mode is active. This prepares a local role profile without backend registration.</p>
             </div>
           </div>
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -76,7 +69,7 @@ export default function SignupPage() {
             <div>
               <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Password</label>
               <input type="password" className="soc-input" placeholder="Create password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              <p className="mt-2 text-xs soc-text-muted">Use at least 6 characters.</p>
+              <p className="mt-2 text-xs soc-text-muted">Stored only for demo entry on this device.</p>
             </div>
             {error ? <p className="text-sm text-[#ffb3ad]">{error}</p> : null}
             {success ? <p className="text-sm text-[#8cf0a8]">{success}</p> : null}

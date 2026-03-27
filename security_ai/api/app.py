@@ -29,8 +29,6 @@ except Exception:
     CORSMiddleware = object
     JSONResponse = object
 
-from security_ai.api.core.auth import create_token, decode_token
-from security_ai.api.auth_store import authenticate_user, create_user, get_user_by_email
 from security_ai.api.email_store import build_email_analysis, clear_history as clear_email_history, get_history as get_email_history, get_inbox, save_history as save_email_history
 from security_ai.api.ml_runtime.safe_import import ML_AVAILABLE, check_ml_runtime
 from security_ai.api.model_loader import ModelLoader
@@ -102,23 +100,6 @@ class PlaybookRunRequest(BaseModel):
 
 class ReportExportRequest(BaseModel):
     format: str = "markdown"
-
-
-class AuthLoginRequest(BaseModel):
-    email: str
-    password: str
-    role: str = "analyst"
-
-
-class AuthSignupRequest(BaseModel):
-    name: str
-    email: str
-    password: str
-    role: str = "analyst"
-
-
-class AuthRefreshRequest(BaseModel):
-    token: str
 
 
 class IngestLogsRequest(BaseModel):
@@ -678,65 +659,6 @@ if FastAPI is not None:
     @app.get("/system/metrics")
     async def system_metrics():
         return success_response(storage_service.aggregate_metrics())
-
-    @app.post("/auth/login")
-    async def auth_login(request: AuthLoginRequest):
-        try:
-            user = authenticate_user(request.email, request.password)
-        except LookupError as exc:
-            raise HTTPException(status_code=404, detail=str(exc))
-        except PermissionError as exc:
-            raise HTTPException(status_code=401, detail=str(exc))
-        token = create_token(user["email"], user["role"])
-        refresh_token = create_token(f"{user['email']}:refresh", user["role"])
-        return success_response({
-            "access_token": token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "user": user,
-        })
-
-    @app.post("/auth/signup")
-    async def auth_signup(request: AuthSignupRequest):
-        try:
-            user = create_user(request.name, request.email, request.password, request.role)
-        except ValueError as exc:
-            message = str(exc)
-            status_code = 409 if "already exists" in message else 400
-            raise HTTPException(status_code=status_code, detail=message)
-        return success_response({
-            "message": "User registered successfully.",
-            "user": user,
-        }, status_code=201)
-
-    @app.get("/auth/me")
-    async def auth_me(request: Request):
-        auth_header = request.headers.get("authorization", "")
-        if not auth_header.startswith("Bearer "):
-            raise HTTPException(status_code=401, detail="Access denied. Token is missing.")
-        token = auth_header.split(" ", 1)[1]
-        try:
-            payload = decode_token(token)
-        except Exception as exc:
-            raise HTTPException(status_code=401, detail=str(exc))
-        subject = str(payload.get("sub", "")).split(":")[0]
-        user = get_user_by_email(subject)
-        if user is None:
-            raise HTTPException(status_code=401, detail="Invalid token. User not found.")
-        return success_response({
-            "message": "User verified successfully.",
-            "user": user,
-        })
-
-    @app.post("/auth/refresh")
-    async def auth_refresh(request: AuthRefreshRequest):
-        payload = decode_token(request.token)
-        subject = str(payload.get("sub", "secure.operator")).split(":")[0]
-        role = str(payload.get("role", "analyst")).lower()
-        return success_response({
-            "access_token": create_token(subject, role),
-            "token_type": "bearer",
-        })
 
     @app.post("/ingest/logs")
     async def ingest_logs(request: IngestLogsRequest):

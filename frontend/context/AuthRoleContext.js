@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { getCurrentUser } from '../services/api/auth.service';
 
 const AuthRoleContext = createContext(null);
 
@@ -9,7 +8,8 @@ const defaultSession = {
   email: '',
   role: 'analyst',
   loggedIn: false,
-  token: ''
+  token: '',
+  demoMode: true
 };
 
 const roleViews = {
@@ -59,49 +59,32 @@ export function AuthRoleProvider({ children }) {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined') return;
     const raw = window.localStorage.getItem('trustsphere.session');
     if (!raw) {
       setAuthReady(true);
-      return undefined;
+      return;
     }
-
-    let cancelled = false;
-
-    const hydrateSession = async () => {
-      try {
-        const parsed = JSON.parse(raw);
-        const token = parsed?.token || window.localStorage.getItem('trustsphere.authToken') || '';
-        if (!parsed?.username || !token) throw new Error('Missing local auth session.');
-
-        const response = await getCurrentUser(token);
-        if (cancelled) return;
-        const user = response?.user || {};
-        setSession({
-          name: user.name || parsed?.name || parsed.username,
-          username: user.email || parsed.username,
-          email: user.email || parsed?.email || '',
-          role: normalizeRole(user.role || parsed.role),
-          loggedIn: true,
-          token,
-        });
-      } catch {
-        if (!cancelled) {
-          setSession(defaultSession);
-          window.localStorage.removeItem('trustsphere.session');
-          window.localStorage.removeItem('trustsphere.authToken');
-          window.localStorage.removeItem('trustsphere.refreshToken');
-        }
-      } finally {
-        if (!cancelled) setAuthReady(true);
-      }
-    };
-
-    hydrateSession();
-
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed?.username) throw new Error('Missing local auth session.');
+      setSession({
+        name: parsed?.name || parsed.username,
+        username: parsed.username,
+        email: parsed.email || '',
+        role: normalizeRole(parsed.role),
+        loggedIn: true,
+        token: '',
+        demoMode: true,
+      });
+    } catch {
+      setSession(defaultSession);
+      window.localStorage.removeItem('trustsphere.session');
+      window.localStorage.removeItem('trustsphere.authToken');
+      window.localStorage.removeItem('trustsphere.refreshToken');
+    } finally {
+      setAuthReady(true);
+    }
   }, []);
 
   const login = ({ username, role, name = '', token = '', refreshToken = '' }) => {
@@ -111,13 +94,14 @@ export function AuthRoleProvider({ children }) {
       email: username?.includes?.('@') ? username.trim() : '',
       role: normalizeRole(role),
       loggedIn: true,
-      token
+      token: '',
+      demoMode: true,
     };
     setSession(next);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('trustsphere.session', JSON.stringify(next));
-      if (token) window.localStorage.setItem('trustsphere.authToken', token);
-      if (refreshToken) window.localStorage.setItem('trustsphere.refreshToken', refreshToken);
+      window.localStorage.removeItem('trustsphere.authToken');
+      window.localStorage.removeItem('trustsphere.refreshToken');
     }
   };
 

@@ -29,7 +29,7 @@ DEFAULT_API_KEY = os.getenv("TRUSTSPHERE_API_KEY", "trustsphere-local-dev-key")
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("TRUSTSPHERE_RATE_LIMIT_WINDOW_SECONDS", "60"))
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv("TRUSTSPHERE_RATE_LIMIT_MAX_REQUESTS", "120"))
 MAX_REQUEST_SIZE_BYTES = int(os.getenv("TRUSTSPHERE_MAX_REQUEST_SIZE_BYTES", str(1024 * 1024)))
-AUTH_EXEMPT_PATHS = {"/health", "/system/health", "/auth/login", "/auth/signup", "/auth/me", "/auth/refresh"}
+AUTH_EXEMPT_PATHS = {"/health", "/system/health"}
 
 
 class InMemoryRateLimiter:

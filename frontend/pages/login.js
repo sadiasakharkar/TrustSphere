@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { getAuthBaseUrl, loginUser } from '../services/api/auth.service';
 import { getDefaultRouteForRole } from '../utils/authRedirects';
 
 export default function LoginPage() {
@@ -32,26 +31,14 @@ export default function LoginPage() {
     setSubmitting(true);
     setError('');
     try {
-      const response = await loginUser({
-        email: email.trim(),
-        password,
-      });
-
-      const userRole = response?.user?.role || role;
-      if (userRole !== role) {
-        setError(`This account belongs to ${userRole}. Please choose the correct role and try again.`);
-        return;
-      }
-
       login({
-        username: response.user?.email || email.trim(),
-        name: response.user?.name || email.trim(),
-        role: userRole,
-        token: response.token || '',
+        username: email.trim(),
+        name: email.trim().split('@')[0] || email.trim(),
+        role,
       });
-      router.push(getDefaultRouteForRole(userRole));
+      router.push(getDefaultRouteForRole(role));
     } catch (nextError) {
-      setError(nextError.message || `Authentication failed. Auth server: ${getAuthBaseUrl()}`);
+      setError(nextError.message || 'Unable to start demo session.');
     } finally {
       setSubmitting(false);
     }
@@ -66,7 +53,7 @@ export default function LoginPage() {
         <section className="hidden lg:block">
           <h1 className="font-headline text-6xl font-extrabold tracking-tight text-white">TrustSphere</h1>
           <p className="mt-4 max-w-lg text-lg leading-8 soc-text-muted">
-            Secure access for administrators, analysts, and employees using real role-based authentication.
+            Demo mode access for administrators, analysts, and employees using a local role-based session.
           </p>
         </section>
         <section className="soc-glass mx-auto w-full max-w-md p-8 shadow-card">
@@ -74,7 +61,7 @@ export default function LoginPage() {
             <div>
               <p className="soc-kicker">Sign In</p>
               <h2 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white">Access TrustSphere</h2>
-              <p className="mt-2 text-sm soc-text-muted">Sign in with your email and password. Choose the role linked to your account.</p>
+              <p className="mt-2 text-sm soc-text-muted">Demo mode is active. Choose a role and start a local session without backend authentication.</p>
             </div>
             <button
               type="button"
