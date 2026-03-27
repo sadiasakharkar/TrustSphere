@@ -37,15 +37,7 @@ export default function SignupPage() {
             <div>
               <p className="soc-kicker">Create Access</p>
               <h2 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white">Sign up for the SOC workspace</h2>
-              <p className="mt-2 text-sm soc-text-muted">Create a local prototype account, then continue directly into the TrustSphere console.</p>
             </div>
-            <button
-              type="button"
-              className="rounded-full border border-[rgba(140,180,255,0.28)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[rgba(140,180,255,0.5)] hover:bg-[rgba(95,142,229,0.16)]"
-              onClick={() => router.push('/login')}
-            >
-              Log in
-            </button>
           </div>
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
