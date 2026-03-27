@@ -1,6 +1,8 @@
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
+import { ToastContainer } from 'react-toastify';
 import '../styles/globals.css';
+import 'react-toastify/dist/ReactToastify.css';
 import AppErrorBoundary from '../components/AppErrorBoundary';
 import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider } from '../src/design-system/ThemeProvider';
@@ -44,6 +46,7 @@ export default function App({ Component, pageProps }) {
             </div>
           ) : null}
           <Component {...pageProps} />
+          <ToastContainer position="top-right" autoClose={3000} newestOnTop closeOnClick pauseOnHover theme="dark" />
         </AuthProvider>
       </AppErrorBoundary>
     </ThemeProvider>

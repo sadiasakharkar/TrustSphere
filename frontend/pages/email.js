@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import Layout from '../components/Layout';
 import RequireAuth from '../components/RequireAuth';
 import EmailHistoryTable from '../components/soc/EmailHistoryTable';
@@ -19,6 +20,16 @@ function mapHistory(items = []) {
     riskDrivers: entry.risk_drivers || [],
     time: entry.time || 'Unknown'
   }));
+}
+
+function triggerSeverityToast(result) {
+  const severity = String(result?.severity || '').toUpperCase();
+  const risk = Number(result?.risk_score || 0).toFixed(2);
+  if (severity === 'HIGH') {
+    toast.error(`High risk threat detected. Score: ${risk}`);
+  } else if (severity === 'MEDIUM') {
+    toast.warning(`Suspicious activity detected. Score: ${risk}`);
+  }
 }
 
 export default function EmailPage() {
@@ -71,6 +82,7 @@ export default function EmailPage() {
         sender: emailRecord.sender,
       });
       setResult(nextResult);
+      triggerSeverityToast(nextResult);
       await fetchHistory();
     } catch (err) {
       setError(err.message || 'Unable to analyze email.');
@@ -93,6 +105,7 @@ export default function EmailPage() {
         sender: 'manual@local.demo',
       });
       setResult(nextResult);
+      triggerSeverityToast(nextResult);
       setEmailInput('');
       await fetchHistory();
     } catch (err) {
