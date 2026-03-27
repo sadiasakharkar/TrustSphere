@@ -24,7 +24,7 @@ function buildMockResponse({ method, endpoint, body, error = null }) {
 
 export default function PostmanPage() {
   const [method, setMethod] = useState('POST');
-  const [endpoint, setEndpoint] = useState('/email/analyze');
+  const [endpoint, setEndpoint] = useState('/api/email/analyze');
   const [payload, setPayload] = useState('{\n  "input": "Click here urgently to verify your bank password."\n}');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,7 +119,7 @@ export default function PostmanPage() {
                 </div>
                 <div>
                   <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Endpoint</label>
-                  <input className="soc-input" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} placeholder="/email/analyze" />
+                  <input className="soc-input" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} placeholder="/api/email/analyze" />
                 </div>
               </div>
 
@@ -145,7 +145,7 @@ export default function PostmanPage() {
                   className="soc-btn-secondary"
                   onClick={() => {
                     setMethod('POST');
-                    setEndpoint('/email/analyze');
+                    setEndpoint('/api/email/analyze');
                     setPayload('{\n  "input": "Click here urgently to verify your bank password."\n}');
                     setError('');
                   }}
