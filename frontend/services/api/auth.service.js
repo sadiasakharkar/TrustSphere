@@ -1,7 +1,28 @@
 const DEFAULT_AUTH_BASE_URL = process.env.NEXT_PUBLIC_AUTH_API_BASE_URL || '';
 
+function shouldUseSameOrigin(baseUrl) {
+  if (!baseUrl) return true;
+
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const resolved = new URL(baseUrl, window.location.origin);
+    const isLocalAuthHost = ['127.0.0.1', 'localhost'].includes(resolved.hostname);
+    const isLocalAppHost = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+    return isLocalAuthHost && !isLocalAppHost;
+  } catch {
+    return false;
+  }
+}
+
 function resolveAuthBaseUrl() {
-  return DEFAULT_AUTH_BASE_URL ? DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '') : '';
+  const baseUrl = DEFAULT_AUTH_BASE_URL ? DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '') : '';
+  if (shouldUseSameOrigin(baseUrl)) {
+    return '';
+  }
+  return baseUrl;
 }
 
 async function parseResponse(response) {
