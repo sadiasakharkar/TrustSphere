@@ -1,12 +1,15 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { getCurrentUser } from '../services/api/auth.service';
 
 const AuthRoleContext = createContext(null);
 
 const defaultSession = {
   name: '',
   username: '',
+  email: '',
   role: 'analyst',
-  loggedIn: false
+  loggedIn: false,
+  token: ''
 };
 
 const roleViews = {
@@ -26,6 +29,13 @@ const roleViews = {
       { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
       { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
       { href: '/analytics', label: 'AI Insights', icon: 'psychology' }
+    ]
+  },
+  employee: {
+    sidebar: [
+      { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/monitoring', label: 'My Alerts', icon: 'monitoring' },
+      { href: '/email', label: 'Request Analysis', icon: 'upload_file' }
     ]
   },
   admin: {
@@ -50,32 +60,62 @@ function normalizeRole(role) {
 
 export function AuthRoleProvider({ children }) {
   const [session, setSession] = useState(defaultSession);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return undefined;
     const raw = window.localStorage.getItem('trustsphere.session');
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed?.username) {
-        setSession({
-          name: parsed?.name || parsed.username,
-          username: parsed.username,
-          role: normalizeRole(parsed.role),
-          loggedIn: true
-        });
-      }
-    } catch {
-      window.localStorage.removeItem('trustsphere.session');
+    if (!raw) {
+      setAuthReady(true);
+      return undefined;
     }
+
+    let cancelled = false;
+
+    const hydrateSession = async () => {
+      try {
+        const parsed = JSON.parse(raw);
+        const token = parsed?.token || window.localStorage.getItem('trustsphere.authToken') || '';
+        if (!parsed?.username || !token) throw new Error('Missing local auth session.');
+
+        const response = await getCurrentUser(token);
+        if (cancelled) return;
+        const user = response?.user || {};
+        setSession({
+          name: user.name || parsed?.name || parsed.username,
+          username: user.email || parsed.username,
+          email: user.email || parsed?.email || '',
+          role: normalizeRole(user.role || parsed.role),
+          loggedIn: true,
+          token,
+        });
+      } catch {
+        if (!cancelled) {
+          setSession(defaultSession);
+          window.localStorage.removeItem('trustsphere.session');
+          window.localStorage.removeItem('trustsphere.authToken');
+          window.localStorage.removeItem('trustsphere.refreshToken');
+        }
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    };
+
+    hydrateSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = ({ username, role, name = '', token = '', refreshToken = '' }) => {
     const next = {
       name: name?.trim() || username?.trim() || 'secure.operator',
       username: username?.trim() || 'secure.operator',
+      email: username?.includes?.('@') ? username.trim() : '',
       role: normalizeRole(role),
-      loggedIn: true
+      loggedIn: true,
+      token
     };
     setSession(next);
     if (typeof window !== 'undefined') {
@@ -97,13 +137,14 @@ export function AuthRoleProvider({ children }) {
   const value = useMemo(() => ({
     session,
     role: session.role,
+    authReady,
     isAdmin: session.role === 'admin',
     isAnalyst: session.role === 'analyst',
     isEmployee: session.role === 'employee',
     roleView: roleViews[session.role] || roleViews.analyst,
     login,
     logout
-  }), [session]);
+  }), [authReady, session]);
 
   return <AuthRoleContext.Provider value={value}>{children}</AuthRoleContext.Provider>;
 }

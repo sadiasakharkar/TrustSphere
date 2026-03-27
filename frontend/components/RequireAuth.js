@@ -3,11 +3,12 @@ import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function RequireAuth({ children, adminOnly = false }) {
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, authReady } = useAuth();
   const router = useRouter();
   const allowedRoles = adminOnly ? ['admin'] : null;
 
   useEffect(() => {
+    if (!authReady) return;
     if (!session.loggedIn) {
       router.replace('/login');
       return;
@@ -15,8 +16,9 @@ export default function RequireAuth({ children, adminOnly = false }) {
     if (allowedRoles && !allowedRoles.includes(session.role)) {
       router.replace('/overview');
     }
-  }, [allowedRoles, isAdmin, router, session.loggedIn, session.role]);
+  }, [allowedRoles, authReady, isAdmin, router, session.loggedIn, session.role]);
 
+  if (!authReady) return null;
   if (!session.loggedIn) return null;
   if (allowedRoles && !allowedRoles.includes(session.role)) return null;
 

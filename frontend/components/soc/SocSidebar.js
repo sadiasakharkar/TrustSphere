@@ -28,7 +28,9 @@ export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose })
             {!collapsed ? (
               <div>
                 <h1 className="font-headline text-xl font-extrabold tracking-tight text-[#adc6ff]">TrustSphere</h1>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.55)]">SOC Analyst</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.55)]">
+                  {session.role === 'admin' ? 'Administrator' : session.role === 'employee' ? 'Employee' : 'Analyst'}
+                </p>
               </div>
             ) : null}
           </div>
