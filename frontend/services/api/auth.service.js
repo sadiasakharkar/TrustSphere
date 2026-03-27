@@ -1,11 +1,31 @@
 const DEFAULT_AUTH_BASE_URL =
   process.env.NEXT_PUBLIC_AUTH_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://127.0.0.1:8000';
+  '';
 const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_TRUSTSPHERE_API_KEY || 'trustsphere-local-dev-key';
 
+function shouldUseSameOrigin(baseUrl) {
+  if (!baseUrl) return true;
+
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    const resolved = new URL(baseUrl, window.location.origin);
+    const isLocalAuthHost = ['127.0.0.1', 'localhost'].includes(resolved.hostname);
+    const isLocalAppHost = ['127.0.0.1', 'localhost'].includes(window.location.hostname);
+    return isLocalAuthHost && !isLocalAppHost;
+  } catch {
+    return false;
+  }
+}
+
 function resolveAuthBaseUrl() {
-  return DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '');
+  const baseUrl = DEFAULT_AUTH_BASE_URL ? DEFAULT_AUTH_BASE_URL.replace(/\/+$/, '') : '';
+  if (shouldUseSameOrigin(baseUrl)) {
+    return '';
+  }
+  return baseUrl;
 }
 
 async function parseResponse(response) {
@@ -58,17 +78,17 @@ async function authGet(path, token) {
 }
 
 export async function signupUser(payload) {
-  return authRequest('/auth/signup', payload);
+  return authRequest('/api/auth/signup', payload);
 }
 
 export async function loginUser(payload) {
-  return authRequest('/auth/login', payload);
+  return authRequest('/api/auth/login', payload);
 }
 
 export async function getCurrentUser(token) {
-  return authGet('/auth/me', token);
+  return authGet('/api/auth/me', token);
 }
 
 export function getAuthBaseUrl() {
-  return resolveAuthBaseUrl();
+  return resolveAuthBaseUrl() || 'same-origin /api';
 }
