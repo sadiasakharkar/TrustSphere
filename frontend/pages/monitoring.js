@@ -7,7 +7,6 @@ import LoadingSkeleton from '../components/soc/LoadingSkeleton';
 import PageContainer from '../components/soc/PageContainer';
 import SectionHeader from '../components/soc/SectionHeader';
 import StatusBadge from '../components/soc/StatusBadge';
-import { useAuth } from '../context/AuthContext';
 import { getWorkflowInsight } from '../services/api/insight.service';
 import { useHybridData } from '../hooks/useHybridData';
 
@@ -21,7 +20,6 @@ const eventColumns = [
 
 export default function MonitoringPage() {
   const [insight, setInsight] = useState(null);
-  const { session } = useAuth();
   const { data } = useHybridData('monitoring', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
   const events = data?.events || [];
   const detectors = data?.detectors || [];
@@ -52,12 +50,8 @@ export default function MonitoringPage() {
           <SectionHeader
             eyebrow="Monitoring"
             title="Live Security Monitoring"
-            description={session.role === 'employee'
-              ? 'Review your latest alerts and personal risk posture using backend-driven telemetry.'
-              : 'Review the latest security events and detector posture using backend-driven telemetry.'}
-            actions={session.role === 'employee'
-              ? <Link href="/email" className="soc-btn-primary">Analyze email</Link>
-              : <Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
+            description="Review the latest security events and detector posture using seeded demo telemetry."
+            actions={<Link href="/incidents" className="soc-btn-primary">Promote to triage</Link>}
           />
 
           {!data ? <LoadingSkeleton rows={5} /> : (
@@ -79,7 +73,7 @@ export default function MonitoringPage() {
 
               <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
               <section className="soc-panel">
-                <SectionHeader eyebrow="Events" title="Live event feed" description="Recent high-signal telemetry from the backend event stream." />
+                <SectionHeader eyebrow="Events" title="Live event feed" description="Recent high-signal telemetry from the demo event stream." />
                 {metrics?.spikeSummary ? (
                   <div className="mt-4 rounded-xl border border-[rgba(255,179,173,0.2)] bg-[rgba(255,179,173,0.08)] px-4 py-3">
                     <div className="flex items-center justify-between gap-3">

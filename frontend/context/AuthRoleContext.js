@@ -7,17 +7,15 @@ const defaultSession = {
   username: '',
   email: '',
   role: 'analyst',
-  loggedIn: false,
-  token: '',
-  demoMode: true
+  loggedIn: false
 };
 
 const roleViews = {
   employee: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/email', label: 'Request Analysis', icon: 'mail' },
       { href: '/monitoring', label: 'My Alerts', icon: 'monitoring' },
-      { href: '/email', label: 'Request Analysis', icon: 'upload_file' },
       { href: '/postman', label: 'Postman', icon: 'send' }
     ]
   },
@@ -29,8 +27,7 @@ const roleViews = {
       { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
       { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
       { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
-      { href: '/analytics', label: 'AI Insights', icon: 'psychology' },
-      { href: '/postman', label: 'Postman', icon: 'send' }
+      { href: '/analytics', label: 'AI Insights', icon: 'psychology' }
     ]
   },
   admin: {
@@ -41,8 +38,7 @@ const roleViews = {
       { href: '/administration', label: 'User Management', icon: 'group' },
       { href: '/monitoring', label: 'Data Sources', icon: 'lan' },
       { href: '/reports', label: 'Compliance Logs', icon: 'fact_check' },
-      { href: '/settings', label: 'Configuration', icon: 'settings' },
-      { href: '/postman', label: 'Postman', icon: 'send' }
+      { href: '/settings', label: 'Configuration', icon: 'settings' }
     ]
   }
 };
@@ -59,49 +55,41 @@ export function AuthRoleProvider({ children }) {
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined') return undefined;
     const raw = window.localStorage.getItem('trustsphere.session');
     if (!raw) {
       setAuthReady(true);
-      return;
+      return undefined;
     }
     try {
       const parsed = JSON.parse(raw);
-      if (!parsed?.username) throw new Error('Missing local auth session.');
-      setSession({
-        name: parsed?.name || parsed.username,
-        username: parsed.username,
-        email: parsed.email || '',
-        role: normalizeRole(parsed.role),
-        loggedIn: true,
-        token: '',
-        demoMode: true,
-      });
+      if (parsed?.username) {
+        setSession({
+          name: parsed?.name || parsed.username,
+          username: parsed.username,
+          email: parsed?.email || '',
+          role: normalizeRole(parsed.role),
+          loggedIn: true
+        });
+      }
     } catch {
-      setSession(defaultSession);
       window.localStorage.removeItem('trustsphere.session');
-      window.localStorage.removeItem('trustsphere.authToken');
-      window.localStorage.removeItem('trustsphere.refreshToken');
     } finally {
       setAuthReady(true);
     }
   }, []);
 
-  const login = ({ username, role, name = '', token = '', refreshToken = '' }) => {
+  const login = ({ username, role, name = '', email = '' }) => {
     const next = {
       name: name?.trim() || username?.trim() || 'secure.operator',
       username: username?.trim() || 'secure.operator',
-      email: username?.includes?.('@') ? username.trim() : '',
+      email: email?.trim() || '',
       role: normalizeRole(role),
-      loggedIn: true,
-      token: '',
-      demoMode: true,
+      loggedIn: true
     };
     setSession(next);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('trustsphere.session', JSON.stringify(next));
-      window.localStorage.removeItem('trustsphere.authToken');
-      window.localStorage.removeItem('trustsphere.refreshToken');
     }
   };
 
@@ -109,8 +97,6 @@ export function AuthRoleProvider({ children }) {
     setSession(defaultSession);
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem('trustsphere.session');
-      window.localStorage.removeItem('trustsphere.authToken');
-      window.localStorage.removeItem('trustsphere.refreshToken');
     }
   };
 

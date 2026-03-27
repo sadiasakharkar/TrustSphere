@@ -1,19 +1,17 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { apiRequest } from '../../services/api/apiClient';
 import StatusIndicator from './StatusIndicator';
 
 export default function SocTopbar({ onMenu }) {
   const { session, logout } = useAuth();
   const router = useRouter();
-  const roleLabel = session.role === 'admin' ? 'Admin' : session.role === 'employee' ? 'Employee' : 'Analyst';
   const [now, setNow] = useState('');
   const [modeStatus, setModeStatus] = useState({
     pipeline: 'ready',
-    pipelineMode: 'HYBRID_MODE',
+    pipelineMode: 'DEMO_MODE',
     backendConnected: false,
-    modelActive: false,
+    modelActive: true,
     fallbackMode: true,
   });
 
@@ -33,36 +31,13 @@ export default function SocTopbar({ onMenu }) {
   }, []);
 
   useEffect(() => {
-    let active = true;
-    const loadStatus = async () => {
-      try {
-        const response = await apiRequest('/system/health');
-        if (!active) return;
-        setModeStatus({
-          pipeline: response.data?.pipeline || 'degraded',
-          pipelineMode: response.data?.pipeline_mode || 'HYBRID_MODE',
-          backendConnected: true,
-          modelActive: Boolean(response.data?.ml_runtime || response.data?.ollama),
-          fallbackMode: Boolean(response.data?.fallback_mode),
-        });
-      } catch {
-        if (active) {
-          setModeStatus({
-            pipeline: 'degraded',
-            pipelineMode: 'SIMULATION_MODE',
-            backendConnected: false,
-            modelActive: false,
-            fallbackMode: true,
-          });
-        }
-      }
-    };
-    loadStatus();
-    const timer = window.setInterval(loadStatus, 10000);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
+    setModeStatus({
+      pipeline: 'ready',
+      pipelineMode: 'DEMO_MODE',
+      backendConnected: false,
+      modelActive: true,
+      fallbackMode: true,
+    });
   }, []);
 
   return (
@@ -82,15 +57,15 @@ export default function SocTopbar({ onMenu }) {
           Live {now}
         </div>
         <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 xl:flex">
-          <StatusIndicator status={modeStatus.pipelineMode === 'LIVE_MODE' ? 'LIVE AI' : modeStatus.pipelineMode === 'SIMULATION_MODE' ? 'SIMULATION MODE' : 'HYBRID MODE'} pulse={modeStatus.pipelineMode !== 'LIVE_MODE'} />
+          <StatusIndicator status="DEMO MODE" pulse />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
-          <StatusIndicator status={modeStatus.backendConnected ? 'Backend connected' : 'Backend offline'} pulse={!modeStatus.backendConnected} />
+          <StatusIndicator status="Frontend only" />
           <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
-          <StatusIndicator status={modeStatus.modelActive ? 'Model active' : 'Model standby'} />
+          <StatusIndicator status={modeStatus.modelActive ? 'Mock data active' : 'Model standby'} />
         </div>
-        <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push(session.role === 'admin' ? '/settings' : '/overview')}>
+        <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push(session.role === 'admin' ? '/settings' : session.role === 'employee' ? '/monitoring' : '/overview')}>
           <span className="material-symbols-outlined">manage_accounts</span>
-          {roleLabel}
+          {session.role === 'admin' ? 'Admin' : session.role === 'employee' ? 'Employee' : 'Analyst'}
         </button>
         <button
           className="soc-btn-ghost"

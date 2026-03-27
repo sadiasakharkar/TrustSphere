@@ -4,7 +4,6 @@ import { bootstrapEntities } from '../data/bootstrap/entities.js';
 import { bootstrapIncidents } from '../data/bootstrap/incidents.js';
 import { bootstrapMetrics } from '../data/bootstrap/metrics.js';
 import { bootstrapPlaybooks } from '../data/bootstrap/playbooks.js';
-import { getApiBaseUrl, isDemoMode } from './api/apiClient.js';
 import { getAdministrationWorkspace } from './api/admin.service.js';
 import { getAnalyticsWorkspace } from './api/analytics.service.js';
 import { getDetectionsOverview } from './api/detectionService.js';
@@ -15,49 +14,6 @@ import { getDetectionsFeed, getLiveEvents } from './api/monitoring.service.js';
 import { getOverviewSummary } from './api/overview.service.js';
 import { getPlaybooks } from './api/playbook.service.js';
 import { getReportsWorkspace } from './api/report.service.js';
-
-const CACHE_PREFIX = 'trustsphere.domain-cache';
-
-async function fetchHealth() {
-  const response = await fetch(`${getApiBaseUrl()}/system/health`, {
-    headers: { 'x-api-key': process.env.NEXT_PUBLIC_TRUSTSPHERE_API_KEY || 'trustsphere-local-dev-key' }
-  });
-  if (!response.ok) throw new Error('Backend unavailable');
-  const raw = await response.json();
-  return raw?.data || {};
-}
-
-function canUseStorage() {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-}
-
-function cacheKey(domain, params = {}) {
-  return `${CACHE_PREFIX}:${domain}:${JSON.stringify(params || {})}`;
-}
-
-export function getCachedDomainData(domain, params = {}) {
-  if (!canUseStorage()) return null;
-  try {
-    const raw = window.localStorage.getItem(cacheKey(domain, params));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.data || null;
-  } catch {
-    return null;
-  }
-}
-
-export function setCachedDomainData(domain, params = {}, data) {
-  if (!canUseStorage() || !data) return;
-  try {
-    window.localStorage.setItem(cacheKey(domain, params), JSON.stringify({
-      savedAt: new Date().toISOString(),
-      data,
-    }));
-  } catch {
-    // Ignore local cache write failures to preserve UI availability.
-  }
-}
 
 export const bootstrapData = {
   overview: {
@@ -232,12 +188,7 @@ export const bootstrapData = {
 };
 
 export async function probeBackend() {
-  try {
-    const health = await fetchHealth();
-    return { connected: true, health };
-  } catch {
-    return { connected: false, health: null };
-  }
+  return { connected: false, health: null };
 }
 
 export async function getDomainData(domain, params = {}) {
@@ -311,5 +262,5 @@ export function getBootstrapData(domain, params = {}) {
 }
 
 export function shouldPreferBootstrap() {
-  return isDemoMode();
+  return true;
 }

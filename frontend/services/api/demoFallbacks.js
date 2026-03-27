@@ -193,5 +193,5 @@ export function resolveDemoFallback(path, method = 'GET') {
 }
 
 export function isDemoModeEnabled() {
-  return String(process.env.NEXT_PUBLIC_DEMO_MODE || 'true').toLowerCase() === 'true';
+  return true;
 }
