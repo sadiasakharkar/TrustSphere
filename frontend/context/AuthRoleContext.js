@@ -10,6 +10,13 @@ const defaultSession = {
 };
 
 const roleViews = {
+  employee: {
+    sidebar: [
+      { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/email', label: 'Email Risk', icon: 'mail' },
+      { href: '/monitoring', label: 'Basic Alerts', icon: 'warning' }
+    ]
+  },
   analyst: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
@@ -35,7 +42,10 @@ const roleViews = {
 };
 
 function normalizeRole(role) {
-  return String(role || 'analyst').toLowerCase() === 'admin' ? 'admin' : 'analyst';
+  const normalized = String(role || 'analyst').toLowerCase();
+  if (normalized === 'admin') return 'admin';
+  if (normalized === 'employee') return 'employee';
+  return 'analyst';
 }
 
 export function AuthRoleProvider({ children }) {
@@ -89,6 +99,7 @@ export function AuthRoleProvider({ children }) {
     role: session.role,
     isAdmin: session.role === 'admin',
     isAnalyst: session.role === 'analyst',
+    isEmployee: session.role === 'employee',
     roleView: roleViews[session.role] || roleViews.analyst,
     login,
     logout

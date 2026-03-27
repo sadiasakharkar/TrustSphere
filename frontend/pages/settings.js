@@ -13,6 +13,11 @@ export default function SettingsPage() {
   const [insight, setInsight] = useState(null);
   const { isAdmin, session } = useAuth();
   const { data } = useHybridData('administration', {}, { bootstrapDelayMs: 8000, pollIntervalMs: 6000 });
+  const rolePermissions = {
+    Admin: ['Full access', 'View all reports', 'Manage users', 'Take actions'],
+    Analyst: ['View threats', 'Analyze emails', 'View history'],
+    Employee: ['View inbox', 'Check email risk', 'Basic alerts only']
+  };
 
   useEffect(() => {
     let active = true;
@@ -78,6 +83,37 @@ export default function SettingsPage() {
               </section>
             </div>
           )}
+
+          {data ? (
+            <section className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">
+              <section className="soc-panel">
+                <SectionHeader eyebrow="Access Control" title="Role permissions" description="Role-based access control for admin, analyst, and employee operators." />
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {Object.entries(rolePermissions).map(([roleName, permissions]) => (
+                    <div key={roleName} className="soc-panel-muted">
+                      <p className="text-sm font-semibold text-white">{roleName}</p>
+                      <ul className="mt-3 space-y-2 text-xs soc-text-muted">
+                        {permissions.map((permission) => (
+                          <li key={permission}>{"\u2714"} {permission}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section className="soc-panel">
+                <SectionHeader eyebrow="Employee Access" title="Employee permissions" description="Basic view for inbox, risk checks, and limited alert visibility." />
+                <div className="mt-4 space-y-3">
+                  {rolePermissions.Employee.map((permission) => (
+                    <div key={permission} className="soc-panel-muted flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[rgba(140,180,255,0.85)]">verified</span>
+                      <p className="text-sm text-white">{permission}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </section>
+          ) : null}
 
           {data ? (
             <section className="grid gap-6 xl:grid-cols-[0.85fr,1.15fr]">

@@ -1,4 +1,9 @@
 export const socNavigation = {
+  employee: [
+    { href: '/overview', label: 'Dashboard', icon: 'dashboard' },
+    { href: '/email', label: 'Email Risk', icon: 'mail' },
+    { href: '/monitoring', label: 'Basic Alerts', icon: 'warning' },
+  ],
   analyst: [
     { href: '/overview', label: 'Dashboard', icon: 'dashboard' },
     { href: '/monitoring', label: 'Alerts', icon: 'warning' },

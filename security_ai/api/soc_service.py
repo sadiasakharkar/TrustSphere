@@ -822,6 +822,7 @@ class SOCService:
             {"id": "U-002", "name": "Maya Patel", "role": "Admin", "status": "Active"},
             {"id": "U-003", "name": "Jordan Lee", "role": "Analyst", "status": "Suspended"},
             {"id": "U-004", "name": "Riley Grant", "role": "Analyst", "status": "Active"},
+            {"id": "U-005", "name": "Priya Sharma", "role": "Employee", "status": "Active"},
         ]
 
     def _build_system_status(self) -> dict[str, Any]:

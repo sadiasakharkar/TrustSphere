@@ -104,7 +104,8 @@ export const users = [
   { id: 'U-002', name: 'Maya Patel', role: 'Admin', status: 'Active' },
   { id: 'U-003', name: 'Jordan Lee', role: 'Analyst', status: 'Suspended' },
   { id: 'U-004', name: 'Riley Grant', role: 'Analyst', status: 'Active' },
-  { id: 'U-005', name: 'Noah Reyes', role: 'Analyst', status: 'Active' }
+  { id: 'U-005', name: 'Noah Reyes', role: 'Analyst', status: 'Active' },
+  { id: 'U-006', name: 'Priya Sharma', role: 'Employee', status: 'Active' }
 ];
 
 export const modelTrainingStatus = [

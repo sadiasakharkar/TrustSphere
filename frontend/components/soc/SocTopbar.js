@@ -7,6 +7,7 @@ import StatusIndicator from './StatusIndicator';
 export default function SocTopbar({ onMenu }) {
   const { session, logout } = useAuth();
   const router = useRouter();
+  const roleLabel = session.role === 'admin' ? 'Admin' : session.role === 'employee' ? 'Employee' : 'Analyst';
   const [now, setNow] = useState('');
   const [modeStatus, setModeStatus] = useState({
     pipeline: 'ready',
@@ -88,7 +89,7 @@ export default function SocTopbar({ onMenu }) {
         </div>
         <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push(session.role === 'admin' ? '/settings' : '/overview')}>
           <span className="material-symbols-outlined">manage_accounts</span>
-          {session.role === 'admin' ? 'Admin' : 'Analyst'}
+          {roleLabel}
         </button>
         <button
           className="soc-btn-ghost"

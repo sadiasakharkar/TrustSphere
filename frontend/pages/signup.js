@@ -55,6 +55,7 @@ export default function SignupPage() {
             <div>
               <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Access role</label>
               <select className="soc-input" value={role} onChange={(event) => setRole(event.target.value)}>
+                <option value="employee">Employee</option>
                 <option value="analyst">Analyst</option>
                 <option value="admin">Admin</option>
               </select>

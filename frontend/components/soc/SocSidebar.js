@@ -7,6 +7,7 @@ export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose })
   const router = useRouter();
   const { session } = useAuth();
   const visibleNavigation = getNavigationForRole(session.role);
+  const roleLabel = session.role === 'admin' ? 'Admin' : session.role === 'employee' ? 'Employee' : 'Analyst';
   const isActiveRoute = (href) => {
     if (router.pathname === href) return true;
     if (href === '/incidents' && (router.pathname === '/triage' || router.pathname === '/incident/[id]')) return true;
@@ -42,7 +43,7 @@ export default function SocSidebar({ collapsed, mobileOpen, onToggle, onClose })
             {!collapsed ? (
               <>
                 <p className="mt-2 text-sm font-semibold text-white">{session.username || 'secure.operator'}</p>
-                <p className="mt-1 text-xs soc-text-muted">{session.role === 'admin' ? 'Admin' : 'Analyst'}</p>
+                <p className="mt-1 text-xs soc-text-muted">{roleLabel}</p>
               </>
             ) : <p className="mt-2 text-xs font-semibold text-white">{session.role?.slice(0,1)?.toUpperCase()}</p>}
           </div>
