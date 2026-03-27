@@ -187,6 +187,31 @@ export const bootstrapData = {
   }
 };
 
+const CACHE_PREFIX = 'trustsphere.demo-cache';
+
+function getCacheKey(domain, params = {}) {
+  return `${CACHE_PREFIX}:${domain}:${JSON.stringify(params || {})}`;
+}
+
+export function getCachedDomainData(domain, params = {}) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(getCacheKey(domain, params));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedDomainData(domain, params = {}, data) {
+  if (typeof window === 'undefined' || !data) return;
+  try {
+    window.localStorage.setItem(getCacheKey(domain, params), JSON.stringify(data));
+  } catch {
+    // Ignore storage failures in demo mode and continue with in-memory/bootstrap data.
+  }
+}
+
 export async function probeBackend() {
   return { connected: false, health: null };
 }
