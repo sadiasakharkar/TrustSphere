@@ -1,3 +1,13 @@
+function buildDemoUser(req, fallbackRole) {
+  return {
+    id: "demo-user",
+    name: "Demo Operator",
+    email: "demo@trustsphere.local",
+    role: String(req.query.role || fallbackRole || "employee").toLowerCase(),
+    mode: "demo",
+  };
+}
+
 exports.adminAccess = async (req, res) => {
   return res.status(200).json({
     message: "Admin access granted.",
@@ -8,7 +18,7 @@ exports.adminAccess = async (req, res) => {
       "view_analytics",
       "configure_platform",
     ],
-    user: req.user,
+    user: buildDemoUser(req, "admin"),
   });
 };
 
@@ -22,7 +32,7 @@ exports.analystAccess = async (req, res) => {
       "update_incident_status",
       "view_analytics",
     ],
-    user: req.user,
+    user: buildDemoUser(req, "analyst"),
   });
 };
 
@@ -34,6 +44,6 @@ exports.employeeAccess = async (req, res) => {
       "view_personal_risk_score",
       "trigger_limited_analysis",
     ],
-    user: req.user,
+    user: buildDemoUser(req, "employee"),
   });
 };
