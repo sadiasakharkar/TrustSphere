@@ -1,6 +1,44 @@
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useAuth } from '../context/AuthContext';
+import { apiRequest } from '../services/api/apiClient';
 
 export default function HomePage() {
+  const router = useRouter();
+  const { login } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('analyst');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!username.trim() || !password.trim()) return;
+    setSubmitting(true);
+    try {
+      const response = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          role,
+        }),
+      });
+      login({
+        username: response.data?.user?.name || username.trim(),
+        role: response.data?.user?.role || role,
+        token: response.data?.access_token || '',
+        refreshToken: response.data?.refresh_token || '',
+      });
+    } catch {
+      login({ username: username.trim(), role });
+    } finally {
+      setSubmitting(false);
+    }
+    router.push('/overview');
+  };
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-[var(--ts-surface-lowest)]">
       <div className="topology-layer" />
@@ -17,50 +55,50 @@ export default function HomePage() {
               <p className="mt-6 max-w-xl text-base leading-8 soc-text-muted">
                 An enterprise SOC workspace for monitoring, incident triage, graph-led investigation, response playbooks, and local AI analyst reasoning.
               </p>
-
-              <div className="mt-10 flex flex-wrap items-center gap-3">
-                <Link href="/login" className="soc-btn-primary">Launch console</Link>
-                <Link href="/overview" className="soc-btn-secondary">Enter workspace</Link>
-              </div>
-
-              <div className="mt-10 flex flex-wrap gap-2">
-                {['UEBA', 'Attack Graph', 'Incident AI', 'Offline Ready'].map((item) => (
-                  <span key={item} className="soc-badge border border-[rgba(65,71,85,0.55)] bg-[rgba(16,20,26,0.86)] text-[rgba(223,226,235,0.82)]">
-                    {item}
-                  </span>
-                ))}
-              </div>
             </div>
 
             <section className="soc-glass mx-auto w-full max-w-xl p-6 sm:p-8">
-              <div className="border-b border-[rgba(65,71,85,0.45)] pb-5">
-                <p className="soc-kicker">Startup Brief</p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Security operations ready</h2>
+              <div className="mb-8">
+                <p className="soc-kicker">Authorization Required</p>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Enter the SOC workspace</h2>
                 <p className="mt-3 text-sm leading-7 soc-text-muted">
-                  Launch directly into the command console with the current demo scenario, seeded incidents, and the full analyst workflow connected end to end.
+                  Use a role-based local session. No external identity provider is required for this prototype.
                 </p>
               </div>
-
-              <div className="grid gap-3 pt-5 sm:grid-cols-2">
-                <div className="soc-panel-muted">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Environment</p>
-                  <p className="mt-3 text-sm font-semibold text-white">Air-gapped demo</p>
-                  <p className="mt-1 text-xs soc-text-muted">FastAPI backend and local intelligence pipeline</p>
+              <form className="space-y-5" onSubmit={handleSubmit}>
+                <div>
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Access role</label>
+                  <select className="soc-input" value={role} onChange={(event) => setRole(event.target.value)}>
+                    <option value="analyst">Analyst</option>
+                    <option value="admin">Admin</option>
+                  </select>
                 </div>
-                <div className="soc-panel-muted">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Workflow</p>
-                  <p className="mt-3 text-sm font-semibold text-white">Monitoring to report</p>
-                  <p className="mt-1 text-xs soc-text-muted">Connected incident, graph, playbook, and reporting flow</p>
+                <div>
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Username</label>
+                  <input className="soc-input" placeholder="Enter username" value={username} onChange={(event) => setUsername(event.target.value)} />
                 </div>
-                <div className="soc-panel-muted">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Detectors</p>
-                  <p className="mt-3 text-sm font-semibold text-white">UEBA + fraud suite</p>
-                  <p className="mt-1 text-xs soc-text-muted">Email, URL, credential, attachment, and prompt guard models</p>
+                <div>
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Password</label>
+                  <input type="password" className="soc-input" placeholder="Enter password" value={password} onChange={(event) => setPassword(event.target.value)} />
                 </div>
-                <div className="soc-panel-muted">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[rgba(193,198,215,0.58)]">Analyst entry</p>
-                  <p className="mt-3 text-sm font-semibold text-white">Role-based access</p>
-                  <p className="mt-1 text-xs soc-text-muted">Analyst and Admin entry points via the same SOC shell</p>
+                <button
+                  type="submit"
+                  className="soc-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!username.trim() || !password.trim() || submitting}
+                >
+                  <span className="material-symbols-outlined text-base">login</span>
+                  {submitting ? 'Initializing...' : 'Initialize session'}
+                </button>
+              </form>
+              <div className="mt-5 border-t border-[rgba(65,71,85,0.45)] pt-5 text-sm soc-text-muted">
+                Need an account?{' '}
+                <Link href="/signup" className="font-semibold text-white underline decoration-[rgba(140,180,255,0.45)] underline-offset-4">
+                  Sign up
+                </Link>
+                <div className="mt-3">
+                  <Link href="/login" className="text-[rgba(193,198,215,0.78)] transition hover:text-white">
+                    Open full login page
+                  </Link>
                 </div>
               </div>
             </section>
