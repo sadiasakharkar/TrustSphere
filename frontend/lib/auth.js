@@ -6,7 +6,7 @@ export function generateToken(user) {
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    throw new Error('JWT_SECRET is not configured.');
+    throw new Error('JWT authentication is not configured. Set JWT_SECRET in frontend/.env.local.');
   }
 
   return jwt.sign(
@@ -24,7 +24,7 @@ export async function getUserFromRequest(req) {
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret) {
-    const error = new Error('JWT_SECRET is not configured.');
+    const error = new Error('JWT authentication is not configured. Set JWT_SECRET in frontend/.env.local.');
     error.statusCode = 500;
     throw error;
   }

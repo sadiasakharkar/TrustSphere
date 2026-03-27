@@ -2,41 +2,46 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { apiRequest } from '../services/api/apiClient';
+import { getAuthBaseUrl, loginUser } from '../services/api/auth.service';
 
 export default function HomePage() {
   const router = useRouter();
   const { login } = useAuth();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('analyst');
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!username.trim() || !password.trim()) return;
+    if (!email.trim() || !password.trim()) return;
     setSubmitting(true);
+    setError('');
     try {
-      const response = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          username: username.trim(),
-          password,
-          role,
-        }),
+      const response = await loginUser({
+        email: email.trim(),
+        password,
       });
+
+      const userRole = response?.user?.role || role;
+      if (userRole !== role) {
+        setError(`This account belongs to ${userRole}. Please choose the correct role and try again.`);
+        return;
+      }
+
       login({
-        username: response.data?.user?.name || username.trim(),
-        role: response.data?.user?.role || role,
-        token: response.data?.access_token || '',
-        refreshToken: response.data?.refresh_token || '',
+        username: response.user?.email || email.trim(),
+        name: response.user?.name || email.trim(),
+        role: userRole,
+        token: response.token || '',
       });
-    } catch {
-      login({ username: username.trim(), role });
+      router.push('/overview');
+    } catch (nextError) {
+      setError(nextError.message || `Authentication failed. Auth server: ${getAuthBaseUrl()}`);
     } finally {
       setSubmitting(false);
     }
-    router.push('/overview');
   };
 
   return (
@@ -72,20 +77,21 @@ export default function HomePage() {
                   </select>
                 </div>
                 <div>
-                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Username</label>
-                  <input className="soc-input" placeholder="Enter username" value={username} onChange={(event) => setUsername(event.target.value)} />
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Email</label>
+                  <input className="soc-input" placeholder="Enter email" value={email} onChange={(event) => setEmail(event.target.value)} />
                 </div>
                 <div>
                   <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Password</label>
                   <input type="password" className="soc-input" placeholder="Enter password" value={password} onChange={(event) => setPassword(event.target.value)} />
                 </div>
+                {error ? <p className="text-sm text-[#ffb3ad]">{error}</p> : null}
                 <button
                   type="submit"
                   className="soc-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={!username.trim() || !password.trim() || submitting}
+                  disabled={!email.trim() || !password.trim() || submitting}
                 >
                   <span className="material-symbols-outlined text-base">login</span>
-                  {submitting ? 'Initializing...' : 'Initialize session'}
+                  {submitting ? 'Signing in...' : 'Sign in'}
                 </button>
               </form>
               <div className="mt-5 border-t border-[rgba(65,71,85,0.45)] pt-5 text-sm soc-text-muted">

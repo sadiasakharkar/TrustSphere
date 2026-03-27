@@ -42,6 +42,14 @@ export default async function handler(req, res) {
       },
     });
   } catch (error) {
-    return res.status(500).json({ message: 'Unable to login.', error: error.message });
+    if (String(error.message || '').toLowerCase().includes('mongodb connection')) {
+      return res.status(503).json({ message: error.message });
+    }
+
+    if (String(error.message || '').includes('JWT authentication is not configured')) {
+      return res.status(500).json({ message: error.message });
+    }
+
+    return res.status(500).json({ message: error.message || 'Unable to login.' });
   }
 }

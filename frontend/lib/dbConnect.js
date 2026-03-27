@@ -7,10 +7,10 @@ if (!cached) {
 }
 
 export default async function dbConnect() {
-  const mongoUri = process.env.MONGO_URI;
+  const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI;
 
   if (!mongoUri) {
-    throw new Error('MONGO_URI is not configured.');
+    throw new Error('MongoDB connection is not configured. Set MONGO_URI in frontend/.env.local.');
   }
 
   if (cached.conn) {
@@ -20,9 +20,15 @@ export default async function dbConnect() {
   if (!cached.promise) {
     cached.promise = mongoose.connect(mongoUri, {
       bufferCommands: false,
+      serverSelectionTimeoutMS: 5000,
     });
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (error) {
+    cached.promise = null;
+    throw new Error(`MongoDB connection failed. ${error.message}`);
+  }
   return cached.conn;
 }
