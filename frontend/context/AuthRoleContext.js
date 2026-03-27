@@ -60,9 +60,9 @@ export function AuthRoleProvider({ children }) {
     }
   }, []);
 
-  const login = ({ username, role, token = '', refreshToken = '' }) => {
+  const login = ({ username, role, name = '', token = '', refreshToken = '' }) => {
     const next = {
-      name: username?.trim() || 'secure.operator',
+      name: name?.trim() || username?.trim() || 'secure.operator',
       username: username?.trim() || 'secure.operator',
       role: normalizeRole(role),
       loggedIn: true
