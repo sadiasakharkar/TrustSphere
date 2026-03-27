@@ -70,9 +70,9 @@ export default function SocTopbar({ onMenu }) {
         <button className="soc-btn-ghost lg:hidden" onClick={onMenu} aria-label="Open navigation">
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <div className="relative w-full max-w-[420px]">
+        <div className="relative w-full max-w-[360px]">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[rgba(193,198,215,0.5)]">search</span>
-          <input className="soc-input pl-10" placeholder="Search incidents, assets, IPs, or users" />
+          <input className="soc-input pl-10" placeholder="Search alerts or incidents" />
         </div>
       </div>
 
@@ -81,11 +81,10 @@ export default function SocTopbar({ onMenu }) {
           Live {now}
         </div>
         <div className="hidden items-center gap-3 rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.9)] px-3 py-2 xl:flex">
-          <StatusIndicator status={modeStatus.pipelineMode === 'LIVE_MODE' ? 'LIVE AI' : modeStatus.pipelineMode === 'SIMULATION_MODE' ? 'SIMULATION MODE' : 'HYBRID MODE'} pulse={modeStatus.pipelineMode !== 'LIVE_MODE'} />
-          <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
-          <StatusIndicator status={modeStatus.backendConnected ? 'Backend connected' : 'Backend offline'} pulse={!modeStatus.backendConnected} />
-          <div className="h-4 w-px bg-[rgba(65,71,85,0.55)]" />
-          <StatusIndicator status={modeStatus.modelActive ? 'Model active' : 'Model standby'} />
+          <StatusIndicator
+            status={modeStatus.backendConnected ? 'System ready' : 'Offline mode'}
+            pulse={!modeStatus.backendConnected}
+          />
         </div>
         <button className="soc-btn-secondary hidden sm:inline-flex" onClick={() => router.push(session.role === 'admin' ? '/settings' : '/overview')}>
           <span className="material-symbols-outlined">manage_accounts</span>

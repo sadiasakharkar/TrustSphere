@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getBootstrapData, getDomainData, probeBackend, shouldPreferBootstrap } from '../services/dataProvider.js';
+import { getBootstrapData, getCachedDomainData, getDomainData, probeBackend, setCachedDomainData, shouldPreferBootstrap } from '../services/dataProvider.js';
 
 export function useHybridData(domain, params = {}, options = {}) {
   const {
@@ -9,12 +9,13 @@ export function useHybridData(domain, params = {}, options = {}) {
   } = options;
 
   const paramsKey = useMemo(() => JSON.stringify(params || {}), [params]);
-  const [data, setData] = useState(() => getBootstrapData(domain, params));
+  const [data, setData] = useState(() => getCachedDomainData(domain, params) || getBootstrapData(domain, params));
   const [status, setStatus] = useState({
     mode: shouldPreferBootstrap() ? 'demo' : 'live',
     backendConnected: false,
     modelActive: false,
-    loading: false
+    loading: false,
+    offlineReady: Boolean(getCachedDomainData(domain, params))
   });
   const lastDataRef = useRef(data);
 
@@ -38,31 +39,37 @@ export function useHybridData(domain, params = {}, options = {}) {
         const liveData = await getDomainData(domain, params);
         if (!active) return;
         setData(liveData || lastDataRef.current);
+        if (liveData) setCachedDomainData(domain, params, liveData);
         setStatus({
           mode: 'live',
           backendConnected: true,
           modelActive: true,
-          loading: false
+          loading: false,
+          offlineReady: true
         });
       } catch {
         if (!active) return;
-        setData(lastDataRef.current || getBootstrapData(domain, params));
+        const cached = getCachedDomainData(domain, params);
+        setData(cached || lastDataRef.current || getBootstrapData(domain, params));
         setStatus((prev) => ({
           ...prev,
           backendConnected: false,
           modelActive: false,
-          mode: prev.mode === 'live' ? 'demo' : prev.mode
+          mode: cached ? 'offline' : prev.mode === 'live' ? 'demo' : prev.mode,
+          offlineReady: Boolean(cached)
         }));
       }
     };
 
-    setData(getBootstrapData(domain, params));
+    const cached = getCachedDomainData(domain, params);
+    setData(cached || getBootstrapData(domain, params));
     setStatus((prev) => ({
       ...prev,
-      mode: 'demo',
+      mode: cached ? 'offline' : 'demo',
       backendConnected: false,
       modelActive: false,
-      loading: false
+      loading: false,
+      offlineReady: Boolean(cached)
     }));
 
     const bootstrapTimer = window.setTimeout(() => {
