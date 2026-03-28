@@ -21,6 +21,7 @@ export function getDashboardNavigation(role = 'employee') {
   if (normalizedRole === 'admin') {
     return [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/email', label: 'Email Analyzer', icon: 'mail' },
       { href: '/analytics', label: 'Analytics', icon: 'monitoring' },
       { href: '/admin', label: 'Admin', icon: 'settings' },
     ];
@@ -29,6 +30,7 @@ export function getDashboardNavigation(role = 'employee') {
   if (normalizedRole === 'employee') {
     return [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/email', label: 'Request Analysis', icon: 'mail' },
       { href: '/detections', label: 'Detections', icon: 'shield_lock' },
       { href: '/incidents', label: 'Incidents', icon: 'assignment' },
     ];
@@ -36,6 +38,7 @@ export function getDashboardNavigation(role = 'employee') {
 
   return [
     { href: '/overview', label: 'Overview', icon: 'dashboard' },
+    { href: '/email', label: 'Email Analyzer', icon: 'mail' },
     { href: '/detections', label: 'Detections', icon: 'shield_lock' },
     { href: '/incidents', label: 'Incidents', icon: 'assignment' },
     { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
