@@ -1,6 +1,8 @@
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import RequireAuth from '../../components/RequireAuth';
 import RoleGuard from '../../components/RoleGuard';
+import IncidentCard from '../../components/soc/IncidentCard';
+import { useIncidentApprovals } from '../../hooks/useIncidentApprovals';
 
 const riskCards = [
   { title: 'Critical', value: '04' },
@@ -9,6 +11,8 @@ const riskCards = [
 ];
 
 export default function AnalystDashboardPage() {
+  const { incidents, currentTime, counts, approveIncident, rejectIncident, modifyIncident } = useIncidentApprovals();
+
   return (
     <RequireAuth>
       <RoleGuard allowedRoles={['analyst']} fallback={null}>
@@ -17,13 +21,13 @@ export default function AnalystDashboardPage() {
             <section className="soc-panel">
               <p className="soc-kicker">Incidents</p>
               <h2 className="soc-section-title">Active</h2>
-              <p className="mt-5 text-4xl font-extrabold text-white">12</p>
+              <p className="mt-5 text-4xl font-extrabold text-white">{counts.active}</p>
             </section>
 
             <section className="soc-panel">
               <p className="soc-kicker">Approvals</p>
               <h2 className="soc-section-title">Pending</h2>
-              <p className="mt-5 text-4xl font-extrabold text-white">5</p>
+              <p className="mt-5 text-4xl font-extrabold text-white">{counts.pending}</p>
             </section>
 
             <section className="soc-panel">
@@ -39,6 +43,26 @@ export default function AnalystDashboardPage() {
               </div>
             </section>
           </div>
+
+          <section className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="soc-kicker">Approvals</p>
+                <h2 className="soc-section-title">Pending</h2>
+              </div>
+            </div>
+            {incidents.map((incident) => (
+              <IncidentCard
+                key={incident.id}
+                incident={incident}
+                role="analyst"
+                currentTime={currentTime}
+                onApprove={(incidentId) => approveIncident(incidentId, 'analyst')}
+                onReject={(incidentId) => rejectIncident(incidentId, 'analyst')}
+                onModify={(incidentId, action) => modifyIncident(incidentId, action, 'analyst')}
+              />
+            ))}
+          </section>
         </DashboardLayout>
       </RoleGuard>
     </RequireAuth>

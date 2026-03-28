@@ -1,6 +1,8 @@
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import RequireAuth from '../../components/RequireAuth';
 import RoleGuard from '../../components/RoleGuard';
+import IncidentCard from '../../components/soc/IncidentCard';
+import { useIncidentApprovals } from '../../hooks/useIncidentApprovals';
 
 const alerts = [
   { title: 'Email', value: '2' },
@@ -9,6 +11,8 @@ const alerts = [
 ];
 
 export default function EmployeeDashboardPage() {
+  const { incidents, currentTime } = useIncidentApprovals();
+
   return (
     <RequireAuth>
       <RoleGuard allowedRoles={['employee']} fallback={null}>
@@ -41,6 +45,21 @@ export default function EmployeeDashboardPage() {
               <span className="mr-2 inline-flex h-2.5 w-2.5 rounded-full bg-[#52d4a6]" />
               Normal
             </div>
+          </section>
+
+          <section className="grid gap-4">
+            <div>
+              <p className="soc-kicker">Approvals</p>
+              <h2 className="soc-section-title">Pending</h2>
+            </div>
+            {incidents.map((incident) => (
+              <IncidentCard
+                key={incident.id}
+                incident={incident}
+                role="employee"
+                currentTime={currentTime}
+              />
+            ))}
           </section>
         </DashboardLayout>
       </RoleGuard>

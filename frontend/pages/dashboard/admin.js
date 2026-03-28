@@ -1,6 +1,8 @@
 import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import RequireAuth from '../../components/RequireAuth';
 import RoleGuard from '../../components/RoleGuard';
+import IncidentCard from '../../components/soc/IncidentCard';
+import { useIncidentApprovals } from '../../hooks/useIncidentApprovals';
 
 const cards = [
   { title: 'Health', value: 'Healthy' },
@@ -10,6 +12,8 @@ const cards = [
 ];
 
 export default function AdminDashboardPage() {
+  const { incidents, currentTime } = useIncidentApprovals();
+
   return (
     <RequireAuth adminOnly>
       <RoleGuard allowedRoles={['admin']} fallback={null}>
@@ -23,6 +27,21 @@ export default function AdminDashboardPage() {
               </section>
             ))}
           </div>
+
+          <section className="grid gap-4">
+            <div>
+              <p className="soc-kicker">Audit</p>
+              <h2 className="soc-section-title">Trail</h2>
+            </div>
+            {incidents.map((incident) => (
+              <IncidentCard
+                key={incident.id}
+                incident={incident}
+                role="admin"
+                currentTime={currentTime}
+              />
+            ))}
+          </section>
         </DashboardLayout>
       </RoleGuard>
     </RequireAuth>
