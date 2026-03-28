@@ -25,7 +25,7 @@ export default function EmailHistoryTable({ history = [], onClear }) {
               <th className="px-3 py-2">Email</th>
               <th className="px-3 py-2">Risk</th>
               <th className="px-3 py-2">Severity</th>
-              <th className="px-3 py-2">Risk Drivers</th>
+              <th className="px-3 py-2">Why Flagged</th>
               <th className="px-3 py-2">Actions</th>
             </tr>
           </thead>
@@ -37,11 +37,11 @@ export default function EmailHistoryTable({ history = [], onClear }) {
                 <td className="bg-[rgba(16,20,26,0.86)] px-3 py-4 text-sm text-white">{Number(item.risk || 0).toFixed(2)}</td>
                 <td className="bg-[rgba(16,20,26,0.86)] px-3 py-4"><StatusBadge tone={item.severity}>{item.severity}</StatusBadge></td>
                 <td className="bg-[rgba(16,20,26,0.86)] px-3 py-4">
-                  <div className="flex max-w-[260px] flex-wrap gap-2">
-                    {(item.riskDrivers || []).map((driver) => (
-                      <span key={driver} className="soc-badge border border-[rgba(255,179,173,0.2)] bg-[rgba(255,179,173,0.08)] text-[#ffb3ad]">
-                        {driver}
-                      </span>
+                  <div className="max-w-[320px] space-y-2">
+                    {(item.reasons?.length ? item.reasons : item.riskDrivers || []).map((driver) => (
+                      <p key={driver} className="text-sm leading-6 text-[rgba(223,226,235,0.82)]">
+                        • {driver}
+                      </p>
                     ))}
                   </div>
                 </td>

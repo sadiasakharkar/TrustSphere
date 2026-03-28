@@ -719,6 +719,10 @@ if FastAPI is not None:
             "severity": analysis["severity"],
             "models": analysis["models"],
             "actions_taken": analysis["actions"],
+            "risk_drivers": analysis["risk_drivers"],
+            "reasons": analysis["reasons"],
+            "subject": analysis["subject"],
+            "sender": analysis["sender"],
             "label": analysis["label"],
         }, meta={"message": "Email analyzed."})
 

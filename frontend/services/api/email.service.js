@@ -38,7 +38,7 @@ function writeFallbackHistory(history) {
 
 function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }) {
   const text = String(input || '').toLowerCase();
-  const suspiciousHits = [
+  const tokens = [
     'urgent',
     'verify',
     'password',
@@ -46,7 +46,11 @@ function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }
     'click http',
     'gift card',
     'wire',
-  ].filter((token) => text.includes(token)).length;
+    'otp',
+    'account',
+  ];
+  const matchedTokens = tokens.filter((token) => text.includes(token));
+  const suspiciousHits = matchedTokens.length;
   const probability = Math.min(0.18 + suspiciousHits * 0.14, 0.98);
   const severity = probability >= 0.75 ? 'HIGH' : probability >= 0.4 ? 'MEDIUM' : 'LOW';
   const actions = severity === 'HIGH'
@@ -54,6 +58,12 @@ function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }
     : severity === 'MEDIUM'
       ? ['Flag email for analyst review', 'Warn recipient before interaction']
       : ['Log event for monitoring'];
+  const reasons = [
+    ...(text.includes('http') || text.includes('login') || text.includes('verify') ? ['Suspicious account verification or login lure detected'] : []),
+    ...(text.includes('urgent') || text.includes('immediately') ? ['Urgent language is pressuring the recipient to act quickly'] : []),
+    ...(text.includes('password') || text.includes('otp') || text.includes('credentials') ? ['Credential harvesting language detected'] : []),
+    ...(probability >= 0.6 ? ['The email classifier produced an elevated phishing score'] : []),
+  ];
 
   const entry = {
     input,
@@ -64,9 +74,10 @@ function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }
     models: { email_detector: Number(probability.toFixed(4)) },
     actions,
     risk_drivers: [
-      ...(['urgent', 'verify', 'password', 'login', 'click http', 'gift card', 'wire'].filter((token) => text.includes(token))),
+      ...matchedTokens,
       ...(probability > 0.6 ? ['email_detector anomaly'] : []),
     ],
+    reasons: reasons.length ? reasons : [severity === 'LOW' ? 'No major phishing indicators were found' : 'High-risk content patterns were detected across the message'],
     time: new Date().toISOString(),
     label: probability >= 0.5 ? 'phishing' : 'safe',
   };
@@ -78,6 +89,10 @@ function fallbackAnalyze({ input, subject = '', sender = 'unknown@example.com' }
     severity: entry.severity,
     models: entry.models,
     actions_taken: entry.actions,
+    risk_drivers: entry.risk_drivers,
+    reasons: entry.reasons,
+    subject: entry.subject,
+    sender: entry.sender,
     label: entry.label,
   };
 }

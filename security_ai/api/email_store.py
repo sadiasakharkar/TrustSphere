@@ -88,6 +88,32 @@ def extract_risk_drivers(email_text: str, model_results: dict[str, Any] | None =
     return drivers or ["no major indicators"]
 
 
+def summarize_reasons(email_text: str, risk_drivers: list[str], severity: str) -> list[str]:
+    text_lower = str(email_text or "").lower()
+    reasons: list[str] = []
+
+    if any(token in text_lower for token in ("http://", "https://", "login", "verify", "account")):
+        reasons.append("Suspicious account verification or login lure detected")
+
+    if any(token in text_lower for token in ("urgent", "immediately", "action required")):
+        reasons.append("Urgent language is pressuring the recipient to act quickly")
+
+    if any(token in text_lower for token in ("password", "otp", "pin", "credentials")):
+        reasons.append("Credential harvesting language detected")
+
+    if any("anomaly" in driver for driver in risk_drivers):
+        reasons.append("The email classifier produced an elevated phishing score")
+
+    if not reasons:
+        reasons.append(
+            "High-risk content patterns were detected across the message"
+            if severity in {"HIGH", "MEDIUM"}
+            else "No major phishing indicators were found"
+        )
+
+    return reasons
+
+
 def build_email_analysis(
     detector_result: dict[str, Any],
     *,
@@ -119,6 +145,11 @@ def build_email_analysis(
             "Log event for monitoring",
         ],
     }[severity]
+    model_scores = {
+        "email_detector": round(probability, 4),
+    }
+    risk_drivers = extract_risk_drivers(email_text, model_scores)
+    reasons = summarize_reasons(email_text, risk_drivers, severity)
 
     return {
         "input": email_text,
@@ -126,11 +157,10 @@ def build_email_analysis(
         "subject": subject or "Analyzed email",
         "risk_score": risk_score,
         "severity": severity,
-        "models": {
-            "email_detector": round(probability, 4),
-        },
+        "models": model_scores,
         "actions": actions,
-        "risk_drivers": extract_risk_drivers(email_text, {"email_detector": round(probability, 4)}),
+        "risk_drivers": risk_drivers,
+        "reasons": reasons,
         "time": datetime.utcnow().replace(microsecond=0).isoformat(),
         "label": detector_result.get("label", "safe"),
     }
