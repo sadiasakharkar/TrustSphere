@@ -1,9 +1,21 @@
 const APPROVAL_WINDOW_MS = 60 * 1000;
 
 const responderByRiskType = {
-  'Credential Abuse': { name: 'R. Singh', email: 'r.singh@trustsphere.local' },
-  'Privilege Spike': { name: 'M. Khan', email: 'm.khan@trustsphere.local' },
-  default: { name: 'A. Cole', email: 'a.cole@trustsphere.local' },
+  'Credential Abuse': {
+    team: 'Identity Security Team',
+    approvalGroup: 'SOC Analyst Queue',
+    email: 'identity-security@trustsphere.local',
+  },
+  'Privilege Spike': {
+    team: 'Privileged Access Team',
+    approvalGroup: 'Security Operations Queue',
+    email: 'privileged-access@trustsphere.local',
+  },
+  default: {
+    team: 'Security Operations Team',
+    approvalGroup: 'SOC Analyst Queue',
+    email: 'soc-operations@trustsphere.local',
+  },
 };
 
 function buildDeadline(offsetSeconds = 60) {
@@ -31,10 +43,11 @@ export function resolveResponder(riskType) {
   return responderByRiskType[riskType] || responderByRiskType.default;
 }
 
-export function sendIncidentEmail(responderEmail, incident) {
+export function sendIncidentEmail(teamEmail, incident, approvalGroup) {
   return {
-    to: responderEmail,
-    subject: `Incident ${incident.id}`,
+    to: teamEmail,
+    subject: `Fraud alert ${incident.id}`,
+    preview: `${approvalGroup} notified for ${incident.riskType}`,
     sentAt: new Date().toISOString(),
     status: 'SENT',
   };
@@ -42,15 +55,21 @@ export function sendIncidentEmail(responderEmail, incident) {
 
 function createIncident(seed, createdAt) {
   const responder = resolveResponder(seed.riskType);
-  const emailNotice = sendIncidentEmail(responder.email, seed);
+  const emailNotice = sendIncidentEmail(responder.email, seed, responder.approvalGroup);
   return {
     ...seed,
-    assignedResponder: responder.name,
+    assignedResponder: responder.team,
+    approvedByLabel: responder.approvalGroup,
     responderEmail: responder.email,
+    alertNotice: {
+      ...emailNotice,
+      group: responder.approvalGroup,
+      message: `Fraud alert shared with ${responder.team} and ${responder.approvalGroup}.`,
+    },
     activityLog: [
       buildActivity('AI Suggested', 'AI', new Date(createdAt - 15000).toISOString()),
-      buildActivity('Assigned', responder.name, new Date(createdAt - 12000).toISOString()),
-      buildActivity('Email Sent', responder.email, emailNotice.sentAt),
+      buildActivity('Assigned', responder.team, new Date(createdAt - 12000).toISOString()),
+      buildActivity('Mail Alert Sent', `${responder.approvalGroup} • ${responder.email}`, emailNotice.sentAt),
     ],
   };
 }
@@ -77,7 +96,7 @@ export function createSeedIncidents() {
       },
       auditTrail: [
         buildAudit(new Date(now - 15000).toISOString(), 'AI Suggested', 'AI'),
-        buildAudit(new Date(now - 12000).toISOString(), 'Assigned', 'R. Singh'),
+        buildAudit(new Date(now - 12000).toISOString(), 'Assigned', 'Identity Security Team'),
       ],
     }, now),
     createIncident({
@@ -99,7 +118,7 @@ export function createSeedIncidents() {
       },
       auditTrail: [
         buildAudit(new Date(now - 24000).toISOString(), 'AI Suggested', 'AI'),
-        buildAudit(new Date(now - 21000).toISOString(), 'Assigned', 'M. Khan'),
+        buildAudit(new Date(now - 21000).toISOString(), 'Assigned', 'Privileged Access Team'),
       ],
     }, now),
   ];

@@ -36,6 +36,7 @@ export default function OverviewPage() {
                 value={metric.value || '--'}
                 delta={metric.delta || data?.sourceMode || 'live'}
                 tone={getTone(metric.delta || metric.label)}
+                role={session.role}
               />
             ))}
           </div>

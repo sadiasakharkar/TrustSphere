@@ -24,7 +24,7 @@ export function useIncidentApprovals() {
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [liveActivity, setLiveActivity] = useState(() => [
     { id: 'live-1', message: 'AI suggested HITL-1001', timestamp: new Date().toISOString() },
-    { id: 'live-2', message: 'Responder assigned R. Singh', timestamp: new Date().toISOString() },
+    { id: 'live-2', message: 'Fraud alert mailed to SOC Analyst Queue', timestamp: new Date().toISOString() },
   ]);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export function useIncidentApprovals() {
       'Packet burst flagged',
       'Approval queue updated',
       'Vault access correlated',
-      'Responder email sent',
+      'Security mail alert sent',
       'Risk window refreshed',
     ];
     const timer = window.setInterval(() => {

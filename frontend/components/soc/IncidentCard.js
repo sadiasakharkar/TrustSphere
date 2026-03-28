@@ -69,6 +69,7 @@ export default function IncidentCard({
   const countdown = incident.status === 'PENDING_APPROVAL'
     ? formatCountdown(incident.approvalDeadline, currentTime)
     : incident.status.replaceAll('_', ' ');
+  const approvedLabel = incident.approvedBy || incident.approvedByLabel || 'Pending';
 
   return (
     <>
@@ -90,8 +91,8 @@ export default function IncidentCard({
               <p className="text-xs font-semibold uppercase tracking-[0.16em] soc-text-muted">User</p>
               <p className="mt-2 text-lg font-semibold text-white">{incident.user}</p>
               <div className="mt-3 space-y-1 text-sm">
-                <p className="text-white">Responder: <span className="soc-text-muted">{incident.assignedResponder || 'Unassigned'}</span></p>
-                <p className="text-white">Approved: <span className="soc-text-muted">{incident.approvedBy || 'Pending'}</span></p>
+                <p className="text-white">Assigned responder: <span className="soc-text-muted">{incident.assignedResponder || 'Unassigned'}</span></p>
+                <p className="text-white">Approved by: <span className="soc-text-muted">{approvedLabel}</span></p>
               </div>
             </div>
 
@@ -123,6 +124,12 @@ export default function IncidentCard({
               <p className="mt-2 text-base font-semibold text-white">
                 {incident.status === 'PENDING_APPROVAL' ? `Auto action in ${countdown}` : countdown}
               </p>
+              <p className="mt-2 text-xs soc-text-muted">
+                {incident.alertNotice?.message || 'Security team alert active.'}
+              </p>
+              <p className="mt-1 text-xs text-[#adc6ff]">
+                Mail alert: {incident.alertNotice?.group || 'SOC Analyst Queue'} • {incident.alertNotice?.to || incident.responderEmail || 'n/a'}
+              </p>
             </div>
 
             <div className="soc-panel-muted">
@@ -149,13 +156,19 @@ export default function IncidentCard({
             <div className="mt-3 grid gap-2">
               {(incident.activityLog || []).map((entry, index) => (
                 <div key={`${entry.timestamp}-${index}`} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
-                  <span className="font-medium text-white">{entry.action}</span>
+                  <div>
+                    <span className="font-medium text-white">{entry.action}</span>
+                    <p className="text-xs soc-text-muted">{entry.user}</p>
+                  </div>
                   <span className="soc-text-muted">{formatAuditTime(entry.timestamp)}</span>
                 </div>
               ))}
               {(incident.auditTrail || []).map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
-                  <span className="font-medium text-white">{entry.label}</span>
+                  <div>
+                    <span className="font-medium text-white">{entry.label}</span>
+                    <p className="text-xs soc-text-muted">{entry.actor}</p>
+                  </div>
                   <span className="soc-text-muted">{formatAuditTime(entry.timestamp)}</span>
                 </div>
               ))}
@@ -203,6 +216,12 @@ export default function IncidentCard({
 
       <Modal title="Console" open={consoleOpen} onClose={() => setConsoleOpen(false)}>
         <div className="space-y-3 rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.92)] p-4 font-mono text-sm text-[#d8e2ff]">
+          <div className="flex items-center gap-2 border-b border-[rgba(65,71,85,0.45)] pb-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ff6b6b]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ffd166]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#4cd964]" />
+            <span className="ml-2 text-xs text-[#8ca4d8]">trustsphere://incident/{incident.id}</span>
+          </div>
           <div className="space-y-1">
             {consoleLines.map((line, index) => (
               <div key={`${line}-${index}`}>{line}</div>

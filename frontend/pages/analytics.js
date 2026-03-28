@@ -28,6 +28,7 @@ export default function AnalyticsPage() {
                 value={values[index] ?? '--'}
                 delta="trend"
                 tone={String(label).toLowerCase()}
+                role={session.role}
               />
             ))}
           </div>
