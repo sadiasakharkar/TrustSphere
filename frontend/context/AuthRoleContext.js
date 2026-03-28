@@ -14,34 +14,26 @@ const roleViews = {
   employee: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
-      { href: '/incidents', label: 'Incidents', icon: 'assignment' },
-      { href: '/monitoring', label: 'Alerts', icon: 'monitoring' },
-      { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
-      { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
-      { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
-      { href: '/analytics', label: 'AI Insights', icon: 'psychology' }
+      { href: '/detections', label: 'Detections', icon: 'shield_lock' },
+      { href: '/incidents', label: 'Incidents', icon: 'assignment' }
     ]
   },
   analyst: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/detections', label: 'Detections', icon: 'shield_lock' },
       { href: '/incidents', label: 'Incidents', icon: 'assignment' },
-      { href: '/monitoring', label: 'Alerts', icon: 'monitoring' },
       { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
-      { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
       { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
-      { href: '/analytics', label: 'AI Insights', icon: 'psychology' }
+      { href: '/response', label: 'Response', icon: 'approval' },
+      { href: '/analytics', label: 'Analytics', icon: 'monitoring' }
     ]
   },
   admin: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
-      { href: '/settings', label: 'System Health', icon: 'monitor_heart' },
-      { href: '/detections', label: 'Model Monitoring', icon: 'shield_lock' },
-      { href: '/administration', label: 'User Management', icon: 'group' },
-      { href: '/monitoring', label: 'Data Sources', icon: 'lan' },
-      { href: '/reports', label: 'Compliance Logs', icon: 'fact_check' },
-      { href: '/settings', label: 'Configuration', icon: 'settings' }
+      { href: '/analytics', label: 'Analytics', icon: 'monitoring' },
+      { href: '/admin', label: 'Admin', icon: 'settings' }
     ]
   }
 };

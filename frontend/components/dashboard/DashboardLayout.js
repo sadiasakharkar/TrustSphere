@@ -9,26 +9,44 @@ const roleBadgeLabel = {
   admin: 'Admin',
 };
 
-const roleDashboardHref = {
-  employee: '/dashboard/employee',
-  analyst: '/dashboard/analyst',
-  admin: '/dashboard/admin',
+const roleHomeHref = {
+  employee: '/overview',
+  analyst: '/overview',
+  admin: '/admin',
 };
 
 export function getDashboardNavigation(role = 'employee') {
   const normalizedRole = String(role || 'employee').toLowerCase();
-  const baseHref = roleDashboardHref[normalizedRole] || roleDashboardHref.employee;
+
+  if (normalizedRole === 'admin') {
+    return [
+      { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/analytics', label: 'Analytics', icon: 'monitoring' },
+      { href: '/admin', label: 'Admin', icon: 'settings' },
+    ];
+  }
+
+  if (normalizedRole === 'employee') {
+    return [
+      { href: '/overview', label: 'Overview', icon: 'dashboard' },
+      { href: '/detections', label: 'Detections', icon: 'shield_lock' },
+      { href: '/incidents', label: 'Incidents', icon: 'assignment' },
+    ];
+  }
+
   return [
-    { href: `${baseHref}#dashboard`, label: 'Dashboard', icon: 'dashboard' },
-    { href: `${baseHref}#incidents`, label: 'Incidents', icon: 'assignment' },
-    { href: `${baseHref}#activity`, label: 'Activity', icon: 'monitoring' },
-    { href: `${baseHref}#settings`, label: 'Settings', icon: 'settings' },
+    { href: '/overview', label: 'Overview', icon: 'dashboard' },
+    { href: '/detections', label: 'Detections', icon: 'shield_lock' },
+    { href: '/incidents', label: 'Incidents', icon: 'assignment' },
+    { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
+    { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
+    { href: '/response', label: 'Response', icon: 'approval' },
+    { href: '/analytics', label: 'Analytics', icon: 'monitoring' },
   ];
 }
 
 function isActiveRoute(router, href) {
-  const [path] = String(href).split('#');
-  return router.pathname === path;
+  return router.pathname === href;
 }
 
 export default function DashboardLayout({ role = 'employee', children }) {
@@ -39,6 +57,7 @@ export default function DashboardLayout({ role = 'employee', children }) {
 
   const navigation = useMemo(() => getDashboardNavigation(role), [role]);
   const displayRole = roleBadgeLabel[String(role || 'employee').toLowerCase()] || 'Employee';
+  const homeHref = roleHomeHref[String(role || 'employee').toLowerCase()] || roleHomeHref.employee;
   const displayName = session?.name || session?.username || 'secure.operator';
   const initials = displayName
     .split(/\s+/)
@@ -127,12 +146,12 @@ export default function DashboardLayout({ role = 'employee', children }) {
                       className="soc-nav-link w-full justify-start"
                       onClick={() => {
                         setMenuOpen(false);
-                        router.push(`${roleDashboardHref[String(role || 'employee').toLowerCase()] || roleDashboardHref.employee}#settings`);
+                        router.push(homeHref);
                       }}
                       role="menuitem"
                     >
                       <span className="soc-nav-icon material-symbols-outlined">manage_accounts</span>
-                      <span>Profile</span>
+                      <span>Home</span>
                     </button>
                     <button
                       type="button"
