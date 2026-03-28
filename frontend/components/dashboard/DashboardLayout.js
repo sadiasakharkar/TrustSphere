@@ -17,19 +17,18 @@ const roleDashboardHref = {
 
 export function getDashboardNavigation(role = 'employee') {
   const normalizedRole = String(role || 'employee').toLowerCase();
+  const baseHref = roleDashboardHref[normalizedRole] || roleDashboardHref.employee;
   return [
-    { href: roleDashboardHref[normalizedRole] || roleDashboardHref.employee, label: 'Dashboard', icon: 'dashboard' },
-    { href: '/incidents', label: 'Incidents', icon: 'assignment' },
-    { href: '/monitoring', label: 'Activity', icon: 'monitoring' },
-    { href: '/settings', label: 'Settings', icon: 'settings' },
+    { href: `${baseHref}#dashboard`, label: 'Dashboard', icon: 'dashboard' },
+    { href: `${baseHref}#incidents`, label: 'Incidents', icon: 'assignment' },
+    { href: `${baseHref}#activity`, label: 'Activity', icon: 'monitoring' },
+    { href: `${baseHref}#settings`, label: 'Settings', icon: 'settings' },
   ];
 }
 
 function isActiveRoute(router, href) {
-  if (router.pathname === href) return true;
-  if (href === '/incidents' && (router.pathname === '/triage' || router.pathname === '/incident/[id]')) return true;
-  if (href === '/monitoring' && router.pathname === '/overview') return false;
-  return false;
+  const [path] = String(href).split('#');
+  return router.pathname === path;
 }
 
 export default function DashboardLayout({ role = 'employee', children }) {
@@ -128,7 +127,7 @@ export default function DashboardLayout({ role = 'employee', children }) {
                       className="soc-nav-link w-full justify-start"
                       onClick={() => {
                         setMenuOpen(false);
-                        router.push('/settings');
+                        router.push(`${roleDashboardHref[String(role || 'employee').toLowerCase()] || roleDashboardHref.employee}#settings`);
                       }}
                       role="menuitem"
                     >

@@ -18,7 +18,7 @@ export default function AdminDashboardPage() {
     <RequireAuth adminOnly>
       <RoleGuard allowedRoles={['admin']} fallback={null}>
         <DashboardLayout role="admin">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div id="dashboard" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {cards.map((item) => (
               <section key={item.title} className="soc-panel">
                 <p className="soc-kicker">{item.title}</p>
@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
             ))}
           </div>
 
-          <section className="grid gap-4">
+          <section id="activity" className="grid gap-4">
             <div>
               <p className="soc-kicker">Audit</p>
               <h2 className="soc-section-title">Trail</h2>
@@ -42,6 +42,8 @@ export default function AdminDashboardPage() {
               />
             ))}
           </section>
+          <div id="incidents" className="hidden" />
+          <div id="settings" className="hidden" />
         </DashboardLayout>
       </RoleGuard>
     </RequireAuth>

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { apiRequest } from '../services/api/apiClient';
+import { getDefaultRouteForRole } from '../utils/authRedirects';
 
 const roleOptions = [
   { value: 'employee', label: 'Employee' },
@@ -24,9 +25,9 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (authReady && session.loggedIn) {
-      router.replace('/overview');
+      router.replace(getDefaultRouteForRole(session.role));
     }
-  }, [authReady, router, session.loggedIn]);
+  }, [authReady, router, session.loggedIn, session.role]);
 
   const validate = () => {
     const nextErrors = {};

@@ -17,7 +17,7 @@ export default function EmployeeDashboardPage() {
     <RequireAuth>
       <RoleGuard allowedRoles={['employee']} fallback={null}>
         <DashboardLayout role="employee">
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div id="dashboard" className="grid gap-4 lg:grid-cols-3">
             <section className="soc-panel flex min-h-[148px] flex-col justify-between">
               <p className="soc-kicker">Action</p>
               <h2 className="soc-section-title">Report</h2>
@@ -38,7 +38,7 @@ export default function EmployeeDashboardPage() {
             </section>
           </div>
 
-          <section className="soc-panel max-w-sm">
+          <section id="settings" className="soc-panel max-w-sm">
             <p className="soc-kicker">Status</p>
             <h2 className="soc-section-title">Secure</h2>
             <div className="mt-5 inline-flex items-center rounded-full border border-[rgba(65,71,85,0.55)] bg-[rgba(28,32,38,0.92)] px-3 py-2 text-sm font-semibold text-white">
@@ -47,7 +47,7 @@ export default function EmployeeDashboardPage() {
             </div>
           </section>
 
-          <section className="grid gap-4">
+          <section id="incidents" className="grid gap-4">
             <div>
               <p className="soc-kicker">Approvals</p>
               <h2 className="soc-section-title">Pending</h2>
@@ -61,6 +61,7 @@ export default function EmployeeDashboardPage() {
               />
             ))}
           </section>
+          <div id="activity" className="hidden" />
         </DashboardLayout>
       </RoleGuard>
     </RequireAuth>

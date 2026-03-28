@@ -19,6 +19,7 @@ export function createSeedIncidents() {
     {
       id: 'HITL-1001',
       user: 'maya.patel',
+      assignedResponder: 'R. Singh',
       riskScore: 96,
       riskType: 'Credential Abuse',
       timeline: ['Login burst', 'Geo mismatch', 'Token reuse'],
@@ -27,6 +28,10 @@ export function createSeedIncidents() {
       status: 'PENDING_APPROVAL',
       approvalDeadline: buildDeadline(60),
       approvedBy: null,
+      networkInfo: {
+        host: 'payments-app-01',
+        ip: '203.0.113.41',
+      },
       auditTrail: [
         buildAudit(new Date(now - 15000).toISOString(), 'AI Suggested', 'AI'),
       ],
@@ -34,6 +39,7 @@ export function createSeedIncidents() {
     {
       id: 'HITL-1002',
       user: 'svc.payments',
+      assignedResponder: 'M. Khan',
       riskScore: 89,
       riskType: 'Privilege Spike',
       timeline: ['Role change', 'Host pivot', 'Vault access'],
@@ -42,6 +48,10 @@ export function createSeedIncidents() {
       status: 'PENDING_APPROVAL',
       approvalDeadline: buildDeadline(42),
       approvedBy: null,
+      networkInfo: {
+        host: 'vault-gateway-02',
+        ip: '10.22.4.18',
+      },
       auditTrail: [
         buildAudit(new Date(now - 24000).toISOString(), 'AI Suggested', 'AI'),
       ],

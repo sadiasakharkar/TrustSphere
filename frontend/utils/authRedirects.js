@@ -1,7 +1,7 @@
 export function getDefaultRouteForRole(role) {
-  const normalized = String(role || 'analyst').toLowerCase();
+  const normalized = String(role || 'employee').toLowerCase();
 
-  if (normalized === 'admin') return '/administration';
-  if (normalized === 'employee') return '/monitoring';
-  return '/overview';
+  if (normalized === 'admin') return '/dashboard/admin';
+  if (normalized === 'analyst') return '/dashboard/analyst';
+  return '/dashboard/employee';
 }

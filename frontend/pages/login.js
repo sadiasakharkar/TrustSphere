@@ -146,7 +146,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/login" className="text-sm font-medium text-[var(--ts-accent)] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ts-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ts-surface-2)]">
+            <Link href="/signup" className="text-sm font-medium text-[var(--ts-accent)] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ts-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ts-surface-2)]">
               Create account
             </Link>
           </div>

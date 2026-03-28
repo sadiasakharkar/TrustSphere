@@ -17,7 +17,7 @@ export default function AnalystDashboardPage() {
     <RequireAuth>
       <RoleGuard allowedRoles={['analyst']} fallback={null}>
         <DashboardLayout role="analyst">
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div id="dashboard" className="grid gap-4 lg:grid-cols-3">
             <section className="soc-panel">
               <p className="soc-kicker">Incidents</p>
               <h2 className="soc-section-title">Active</h2>
@@ -44,7 +44,7 @@ export default function AnalystDashboardPage() {
             </section>
           </div>
 
-          <section className="grid gap-4">
+          <section id="incidents" className="grid gap-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="soc-kicker">Approvals</p>
@@ -63,6 +63,8 @@ export default function AnalystDashboardPage() {
               />
             ))}
           </section>
+          <div id="activity" className="hidden" />
+          <div id="settings" className="hidden" />
         </DashboardLayout>
       </RoleGuard>
     </RequireAuth>

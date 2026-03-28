@@ -22,6 +22,8 @@ export default function IncidentCard({
   onModify,
 }) {
   const [modifyOpen, setModifyOpen] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const riskTone = useMemo(() => {
     if (incident.riskScore >= 90) return 'critical';
@@ -54,6 +56,10 @@ export default function IncidentCard({
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] soc-text-muted">User</p>
               <p className="mt-2 text-lg font-semibold text-white">{incident.user}</p>
+              <div className="mt-3 space-y-1 text-sm">
+                <p className="text-white">Responder: <span className="soc-text-muted">{incident.assignedResponder || 'Unassigned'}</span></p>
+                <p className="text-white">Approved: <span className="soc-text-muted">{incident.approvedBy || 'Pending'}</span></p>
+              </div>
             </div>
 
             <div>
@@ -85,23 +91,43 @@ export default function IncidentCard({
                 {incident.status === 'PENDING_APPROVAL' ? `Auto action in ${countdown}` : countdown}
               </p>
             </div>
+
+            <div className="soc-panel-muted">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] soc-text-muted">Network</p>
+              <div className="mt-2 space-y-1 text-sm text-white">
+                <p>Host: <span className="soc-text-muted">{incident.networkInfo?.host || 'n/a'}</span></p>
+                <p>IP: <span className="soc-text-muted">{incident.networkInfo?.ip || 'n/a'}</span></p>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="mt-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] soc-text-muted">Audit</p>
-          <div className="mt-3 grid gap-2">
-            {(incident.auditTrail || []).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
-                <span className="font-medium text-white">{entry.label}</span>
-                <span className="soc-text-muted">{formatAuditTime(entry.timestamp)}</span>
-              </div>
-            ))}
-          </div>
+          <button
+            type="button"
+            className="soc-btn-ghost px-0 text-sm"
+            onClick={() => setActivityOpen((value) => !value)}
+          >
+            {activityOpen ? 'Hide Log' : 'Show Log'}
+          </button>
+          {activityOpen ? (
+            <div className="mt-3 grid gap-2">
+              {(incident.auditTrail || []).map((entry) => (
+                <div key={entry.id} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
+                  <span className="font-medium text-white">{entry.label}</span>
+                  <span className="soc-text-muted">{formatAuditTime(entry.timestamp)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        {role === 'analyst' ? (
-          <div className="mt-5 flex flex-wrap gap-3">
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button className="soc-btn-secondary" type="button" onClick={() => setConsoleOpen(true)}>
+            Open Console
+          </button>
+          {role === 'analyst' ? (
+            <>
             <button className="soc-btn-primary" disabled={!canAct} onClick={() => onApprove?.(incident.id)}>
               Approve
             </button>
@@ -111,8 +137,9 @@ export default function IncidentCard({
             <button className="soc-btn-ghost" disabled={!canAct} onClick={() => onReject?.(incident.id)}>
               Reject
             </button>
-          </div>
-        ) : null}
+            </>
+          ) : null}
+        </div>
       </section>
 
       <Modal title="Modify Action" open={modifyOpen} onClose={() => setModifyOpen(false)}>
@@ -130,6 +157,16 @@ export default function IncidentCard({
               {option}
             </button>
           ))}
+        </div>
+      </Modal>
+
+      <Modal title="Console" open={consoleOpen} onClose={() => setConsoleOpen(false)}>
+        <div className="rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.92)] p-4 font-mono text-sm text-[#d8e2ff]">
+          <div>$ incident {incident.id}</div>
+          <div>$ user {incident.user}</div>
+          <div>$ action {incident.aiSuggestion}</div>
+          <div>$ status {incident.status}</div>
+          <div>$ responder {incident.assignedResponder || 'unassigned'}</div>
         </div>
       </Modal>
     </>
