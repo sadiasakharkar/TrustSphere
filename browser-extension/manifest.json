@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "TrustSphere Fraud Shield",
+  "version": "1.0.0",
+  "description": "Analyzes on-page content with the TrustSphere demo backend and explains detected fraud signals.",
+  "permissions": [],
+  "host_permissions": [
+    "http://127.0.0.1:8000/*",
+    "https://mail.google.com/*",
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
