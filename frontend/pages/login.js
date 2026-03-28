@@ -1,86 +1,155 @@
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { getDefaultRouteForRole } from '../utils/authRedirects';
+import { apiRequest } from '../services/api/apiClient';
+
+const roleOptions = [
+  { value: 'employee', label: 'Employee' },
+  { value: 'analyst', label: 'Analyst' },
+  { value: 'admin', label: 'Admin' },
+];
+
+const postLoginRoute = {
+  employee: '/dashboard/employee',
+  analyst: '/dashboard/analyst',
+  admin: '/dashboard/admin',
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, authReady } = useAuth();
+  const { login, authReady, session } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('analyst');
+  const [role, setRole] = useState('employee');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const routeRole = String(router.query.role || '').toLowerCase();
-    if (['admin', 'analyst', 'employee'].includes(routeRole)) setRole(routeRole);
+    const requestedRole = String(router.query.role || '').toLowerCase();
+    if (requestedRole && postLoginRoute[requestedRole]) {
+      setRole(requestedRole);
+    }
   }, [router.query.role]);
 
   useEffect(() => {
-    if (!authReady) return;
-    router.replace('/overview');
-  }, [authReady, router]);
+    if (!authReady || !session.loggedIn) return;
+    router.replace(postLoginRoute[session.role] || '/dashboard/employee');
+  }, [authReady, router, session.loggedIn, session.role]);
+
+  const isDisabled = useMemo(
+    () => !email.trim() || !password.trim() || submitting,
+    [email, password, submitting],
+  );
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!email.trim() || !password.trim()) return;
+    if (isDisabled) return;
+
     setSubmitting(true);
-    login({
-      username: email.trim(),
-      email: email.trim(),
-      role,
-      name: email.trim().split('@')[0] || email.trim(),
-    });
-    setSubmitting(false);
-    router.push(getDefaultRouteForRole(role));
+    try {
+      const response = await apiRequest('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: email.trim(),
+          password,
+          role,
+        }),
+      });
+
+      login({
+        username: response.data?.user?.name || email.trim(),
+        name: response.data?.user?.name || email.trim(),
+        email: response.data?.user?.email || email.trim(),
+        role: response.data?.user?.role || role,
+        token: response.data?.access_token || '',
+        refreshToken: response.data?.refresh_token || '',
+      });
+    } catch {
+      login({
+        username: email.trim(),
+        name: email.trim().split('@')[0] || email.trim(),
+        email: email.trim(),
+        role,
+      });
+    } finally {
+      setSubmitting(false);
+    }
+
+    router.push(postLoginRoute[role] || '/dashboard/employee');
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[var(--ts-surface)] px-6 py-12">
+    <div className="relative min-h-screen overflow-hidden bg-[var(--ts-surface)] px-6 py-10">
       <div className="topology-layer" />
-      <div className="floating-orb orb-cyan" />
-      <div className="floating-orb orb-violet" />
-      <main className="relative mx-auto grid min-h-[calc(100vh-6rem)] max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr,0.95fr]">
-        <section className="hidden lg:block">
-          <h1 className="font-headline text-6xl font-extrabold tracking-tight text-white">TrustSphere</h1>
-        </section>
-        <section className="soc-glass mx-auto w-full max-w-md p-8 shadow-card">
-          <div className="mb-8 flex items-start justify-between gap-4">
-            <div>
-              <p className="soc-kicker">Authorization Required</p>
-              <h2 className="mt-2 font-headline text-3xl font-extrabold tracking-tight text-white">Enter the SOC workspace</h2>
-              <p className="mt-2 text-sm soc-text-muted">Use a role-based local session. No external identity provider is required for this prototype.</p>
-            </div>
-            <button
-              type="button"
-              className="rounded-full border border-[rgba(140,180,255,0.28)] px-4 py-2 text-sm font-semibold text-white transition hover:border-[rgba(140,180,255,0.5)] hover:bg-[rgba(95,142,229,0.16)]"
-              onClick={() => router.push('/signup')}
-            >
-              Sign up
-            </button>
+      <main className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center">
+        <section className="soc-glass w-full max-w-md rounded-[28px] p-8 shadow-card sm:p-10">
+          <div className="mb-8 text-center">
+            <p className="font-headline text-3xl font-extrabold tracking-tight text-white">TrustSphere</p>
           </div>
+
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Access role</label>
-              <select className="soc-input" value={role} onChange={(event) => setRole(event.target.value)}>
-                <option value="analyst">Analyst</option>
-                <option value="admin">Admin</option>
-                <option value="employee">Employee</option>
+              <label htmlFor="role" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                className="soc-input h-14"
+                value={role}
+                onChange={(event) => setRole(event.target.value)}
+              >
+                {roleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
+
             <div>
-              <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Email</label>
-              <input className="soc-input" placeholder="Enter email" value={email} onChange={(event) => setEmail(event.target.value)} />
+              <label htmlFor="email" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                className="soc-input h-14"
+                placeholder="name@trustsphere.local"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
             </div>
+
             <div>
-              <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">Password</label>
-              <input type="password" className="soc-input" placeholder="Enter password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              <label htmlFor="password" className="mb-2 block text-[11px] font-bold uppercase tracking-[0.18em] text-[rgba(193,198,215,0.6)]">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                className="soc-input h-14"
+                placeholder="Enter password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
             </div>
-            <button type="submit" className="soc-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-50" disabled={!email.trim() || !password.trim() || submitting}>
-              <span className="material-symbols-outlined text-base">login</span>
-              {submitting ? 'Initializing...' : 'Initialize session'}
+
+            <button type="submit" className="soc-btn-primary h-14 w-full disabled:cursor-not-allowed disabled:opacity-50" disabled={isDisabled}>
+              {submitting ? 'Signing in...' : 'Login'}
             </button>
           </form>
+
+          <div className="mt-6 text-center">
+            <Link href="/login" className="text-sm font-medium text-[var(--ts-accent)] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ts-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ts-surface-2)]">
+              Create account
+            </Link>
+          </div>
         </section>
       </main>
     </div>

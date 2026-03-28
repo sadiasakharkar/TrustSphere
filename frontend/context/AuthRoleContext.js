@@ -3,20 +3,23 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const AuthRoleContext = createContext(null);
 
 const defaultSession = {
-  name: 'Demo Analyst',
-  username: 'demo.analyst',
-  email: 'demo@trustsphere.local',
-  role: 'analyst',
-  loggedIn: true
+  name: '',
+  username: '',
+  email: '',
+  role: 'employee',
+  loggedIn: false
 };
 
 const roleViews = {
   employee: {
     sidebar: [
       { href: '/overview', label: 'Overview', icon: 'dashboard' },
-      { href: '/email', label: 'Request Analysis', icon: 'mail' },
-      { href: '/monitoring', label: 'My Alerts', icon: 'monitoring' },
-      { href: '/postman', label: 'Postman', icon: 'send' }
+      { href: '/incidents', label: 'Incidents', icon: 'assignment' },
+      { href: '/monitoring', label: 'Alerts', icon: 'monitoring' },
+      { href: '/investigations', label: 'Investigations', icon: 'search_insights' },
+      { href: '/threat-graph', label: 'Attack Graph', icon: 'hub' },
+      { href: '/playbooks', label: 'Playbooks', icon: 'playlist_add_check' },
+      { href: '/analytics', label: 'AI Insights', icon: 'psychology' }
     ]
   },
   analyst: {
@@ -44,10 +47,10 @@ const roleViews = {
 };
 
 function normalizeRole(role) {
-  const normalized = String(role || 'analyst').toLowerCase();
+  const normalized = String(role || 'employee').toLowerCase();
   if (normalized === 'admin') return 'admin';
-  if (normalized === 'employee') return 'employee';
-  return 'analyst';
+  if (normalized === 'analyst') return 'analyst';
+  return 'employee';
 }
 
 export function AuthRoleProvider({ children }) {
@@ -58,8 +61,6 @@ export function AuthRoleProvider({ children }) {
     if (typeof window === 'undefined') return undefined;
     const raw = window.localStorage.getItem('trustsphere.session');
     if (!raw) {
-      window.localStorage.setItem('trustsphere.session', JSON.stringify(defaultSession));
-      setSession(defaultSession);
       setAuthReady(true);
       return undefined;
     }
@@ -75,14 +76,14 @@ export function AuthRoleProvider({ children }) {
       setSession(nextSession);
       window.localStorage.setItem('trustsphere.session', JSON.stringify(nextSession));
     } catch {
-      window.localStorage.setItem('trustsphere.session', JSON.stringify(defaultSession));
+      window.localStorage.removeItem('trustsphere.session');
       setSession(defaultSession);
     } finally {
       setAuthReady(true);
     }
   }, []);
 
-  const login = ({ username, role, name = '', email = '' }) => {
+  const login = ({ username, role, name = '', email = '', token = '', refreshToken = '' }) => {
     const next = {
       name: name?.trim() || username?.trim() || 'secure.operator',
       username: username?.trim() || 'secure.operator',
@@ -93,13 +94,17 @@ export function AuthRoleProvider({ children }) {
     setSession(next);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem('trustsphere.session', JSON.stringify(next));
+      if (token) window.localStorage.setItem('trustsphere.authToken', token);
+      if (refreshToken) window.localStorage.setItem('trustsphere.refreshToken', refreshToken);
     }
   };
 
   const logout = () => {
     setSession(defaultSession);
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem('trustsphere.session', JSON.stringify(defaultSession));
+      window.localStorage.removeItem('trustsphere.session');
+      window.localStorage.removeItem('trustsphere.authToken');
+      window.localStorage.removeItem('trustsphere.refreshToken');
     }
   };
 
@@ -110,7 +115,7 @@ export function AuthRoleProvider({ children }) {
     isAdmin: session.role === 'admin',
     isAnalyst: session.role === 'analyst',
     isEmployee: session.role === 'employee',
-    roleView: roleViews[session.role] || roleViews.analyst,
+    roleView: roleViews[session.role] || roleViews.employee,
     login,
     logout
   }), [authReady, session]);
