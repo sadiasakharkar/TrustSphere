@@ -1,5 +1,11 @@
 const APPROVAL_WINDOW_MS = 60 * 1000;
 
+const responderByRiskType = {
+  'Credential Abuse': { name: 'R. Singh', email: 'r.singh@trustsphere.local' },
+  'Privilege Spike': { name: 'M. Khan', email: 'm.khan@trustsphere.local' },
+  default: { name: 'A. Cole', email: 'a.cole@trustsphere.local' },
+};
+
 function buildDeadline(offsetSeconds = 60) {
   return new Date(Date.now() + offsetSeconds * 1000).toISOString();
 }
@@ -13,13 +19,48 @@ function buildAudit(timestamp, label, actor = 'AI') {
   };
 }
 
+function buildActivity(action, user, timestamp) {
+  return {
+    action,
+    user,
+    timestamp,
+  };
+}
+
+export function resolveResponder(riskType) {
+  return responderByRiskType[riskType] || responderByRiskType.default;
+}
+
+export function sendIncidentEmail(responderEmail, incident) {
+  return {
+    to: responderEmail,
+    subject: `Incident ${incident.id}`,
+    sentAt: new Date().toISOString(),
+    status: 'SENT',
+  };
+}
+
+function createIncident(seed, createdAt) {
+  const responder = resolveResponder(seed.riskType);
+  const emailNotice = sendIncidentEmail(responder.email, seed);
+  return {
+    ...seed,
+    assignedResponder: responder.name,
+    responderEmail: responder.email,
+    activityLog: [
+      buildActivity('AI Suggested', 'AI', new Date(createdAt - 15000).toISOString()),
+      buildActivity('Assigned', responder.name, new Date(createdAt - 12000).toISOString()),
+      buildActivity('Email Sent', responder.email, emailNotice.sentAt),
+    ],
+  };
+}
+
 export function createSeedIncidents() {
   const now = Date.now();
   return [
-    {
+    createIncident({
       id: 'HITL-1001',
       user: 'maya.patel',
-      assignedResponder: 'R. Singh',
       riskScore: 96,
       riskType: 'Credential Abuse',
       timeline: ['Login burst', 'Geo mismatch', 'Token reuse'],
@@ -29,17 +70,19 @@ export function createSeedIncidents() {
       approvalDeadline: buildDeadline(60),
       approvedBy: null,
       networkInfo: {
-        host: 'payments-app-01',
-        ip: '203.0.113.41',
+        srcIp: '203.0.113.41',
+        dstService: 'payments-api',
+        protocol: 'TLS',
+        anomaly: 'Burst Auth',
       },
       auditTrail: [
         buildAudit(new Date(now - 15000).toISOString(), 'AI Suggested', 'AI'),
+        buildAudit(new Date(now - 12000).toISOString(), 'Assigned', 'R. Singh'),
       ],
-    },
-    {
+    }, now),
+    createIncident({
       id: 'HITL-1002',
       user: 'svc.payments',
-      assignedResponder: 'M. Khan',
       riskScore: 89,
       riskType: 'Privilege Spike',
       timeline: ['Role change', 'Host pivot', 'Vault access'],
@@ -49,13 +92,16 @@ export function createSeedIncidents() {
       approvalDeadline: buildDeadline(42),
       approvedBy: null,
       networkInfo: {
-        host: 'vault-gateway-02',
-        ip: '10.22.4.18',
+        srcIp: '10.22.4.18',
+        dstService: 'vault-gateway',
+        protocol: 'TCP',
+        anomaly: 'Role Pivot',
       },
       auditTrail: [
         buildAudit(new Date(now - 24000).toISOString(), 'AI Suggested', 'AI'),
+        buildAudit(new Date(now - 21000).toISOString(), 'Assigned', 'M. Khan'),
       ],
-    },
+    }, now),
   ];
 }
 
@@ -73,6 +119,16 @@ export function withAuditEntry(incident, label, actor) {
     auditTrail: [
       ...(incident.auditTrail || []),
       buildAudit(new Date().toISOString(), label, actor),
+    ],
+  };
+}
+
+export function withActivityEntry(incident, action, user) {
+  return {
+    ...incident,
+    activityLog: [
+      ...(incident.activityLog || []),
+      buildActivity(action, user, new Date().toISOString()),
     ],
   };
 }

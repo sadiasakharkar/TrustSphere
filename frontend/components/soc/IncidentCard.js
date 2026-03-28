@@ -13,6 +13,37 @@ function formatAuditTime(timestamp) {
   }).format(new Date(timestamp));
 }
 
+function buildConsoleOutput(command, incident) {
+  const normalized = String(command || '').trim();
+  if (!normalized) return [];
+  if (normalized === 'help') {
+    return ['help', `incident ${incident.id}`, 'logs', 'timeline', 'risk-analysis'];
+  }
+  if (normalized.startsWith('incident')) {
+    return [
+      `id ${incident.id}`,
+      `user ${incident.user}`,
+      `status ${incident.status}`,
+      `responder ${incident.assignedResponder || 'unassigned'}`,
+    ];
+  }
+  if (normalized === 'logs') {
+    return (incident.activityLog || []).map((entry) => `${entry.action} ${entry.user}`);
+  }
+  if (normalized === 'timeline') {
+    return (incident.timeline || []).map((entry) => entry);
+  }
+  if (normalized === 'risk-analysis') {
+    return [
+      `score ${incident.riskScore}`,
+      `type ${incident.riskType}`,
+      `confidence ${incident.confidence}%`,
+      `action ${incident.aiSuggestion}`,
+    ];
+  }
+  return ['unknown command'];
+}
+
 export default function IncidentCard({
   incident,
   role = 'employee',
@@ -24,6 +55,8 @@ export default function IncidentCard({
   const [modifyOpen, setModifyOpen] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [consoleInput, setConsoleInput] = useState('help');
+  const [consoleLines, setConsoleLines] = useState(() => buildConsoleOutput('help', incident));
 
   const riskTone = useMemo(() => {
     if (incident.riskScore >= 90) return 'critical';
@@ -95,8 +128,10 @@ export default function IncidentCard({
             <div className="soc-panel-muted">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] soc-text-muted">Network</p>
               <div className="mt-2 space-y-1 text-sm text-white">
-                <p>Host: <span className="soc-text-muted">{incident.networkInfo?.host || 'n/a'}</span></p>
-                <p>IP: <span className="soc-text-muted">{incident.networkInfo?.ip || 'n/a'}</span></p>
+                <p>SRC IP: <span className="soc-text-muted">{incident.networkInfo?.srcIp || 'n/a'}</span></p>
+                <p>DST: <span className="soc-text-muted">{incident.networkInfo?.dstService || 'n/a'}</span></p>
+                <p>Proto: <span className="soc-text-muted">{incident.networkInfo?.protocol || 'n/a'}</span></p>
+                <p>Anom: <span className="soc-text-muted">{incident.networkInfo?.anomaly || 'n/a'}</span></p>
               </div>
             </div>
           </div>
@@ -112,6 +147,12 @@ export default function IncidentCard({
           </button>
           {activityOpen ? (
             <div className="mt-3 grid gap-2">
+              {(incident.activityLog || []).map((entry, index) => (
+                <div key={`${entry.timestamp}-${index}`} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
+                  <span className="font-medium text-white">{entry.action}</span>
+                  <span className="soc-text-muted">{formatAuditTime(entry.timestamp)}</span>
+                </div>
+              ))}
               {(incident.auditTrail || []).map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
                   <span className="font-medium text-white">{entry.label}</span>
@@ -161,12 +202,27 @@ export default function IncidentCard({
       </Modal>
 
       <Modal title="Console" open={consoleOpen} onClose={() => setConsoleOpen(false)}>
-        <div className="rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.92)] p-4 font-mono text-sm text-[#d8e2ff]">
-          <div>$ incident {incident.id}</div>
-          <div>$ user {incident.user}</div>
-          <div>$ action {incident.aiSuggestion}</div>
-          <div>$ status {incident.status}</div>
-          <div>$ responder {incident.assignedResponder || 'unassigned'}</div>
+        <div className="space-y-3 rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(10,14,20,0.92)] p-4 font-mono text-sm text-[#d8e2ff]">
+          <div className="space-y-1">
+            {consoleLines.map((line, index) => (
+              <div key={`${line}-${index}`}>{line}</div>
+            ))}
+          </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setConsoleLines(buildConsoleOutput(consoleInput, incident));
+            }}
+          >
+            <input
+              className="soc-input font-mono"
+              value={consoleInput}
+              onChange={(event) => setConsoleInput(event.target.value)}
+              placeholder="help"
+            />
+            <button type="submit" className="soc-btn-secondary">Run</button>
+          </form>
         </div>
       </Modal>
     </>

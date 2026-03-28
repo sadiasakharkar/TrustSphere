@@ -11,7 +11,7 @@ const riskCards = [
 ];
 
 export default function AnalystDashboardPage() {
-  const { incidents, currentTime, counts, approveIncident, rejectIncident, modifyIncident } = useIncidentApprovals();
+  const { incidents, currentTime, counts, liveActivity, approveIncident, rejectIncident, modifyIncident } = useIncidentApprovals();
 
   return (
     <RequireAuth>
@@ -45,11 +45,9 @@ export default function AnalystDashboardPage() {
           </div>
 
           <section id="incidents" className="grid gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="soc-kicker">Approvals</p>
-                <h2 className="soc-section-title">Pending</h2>
-              </div>
+            <div>
+              <p className="soc-kicker">Approvals</p>
+              <h2 className="soc-section-title">Pending</h2>
             </div>
             {incidents.map((incident) => (
               <IncidentCard
@@ -63,7 +61,19 @@ export default function AnalystDashboardPage() {
               />
             ))}
           </section>
-          <div id="activity" className="hidden" />
+
+          <section id="activity" className="soc-panel">
+            <p className="soc-kicker">Activity</p>
+            <h2 className="soc-section-title">Live</h2>
+            <div className="mt-4 grid gap-2">
+              {liveActivity.map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-xl border border-[rgba(65,71,85,0.45)] bg-[rgba(24,28,34,0.85)] px-3 py-2 text-sm">
+                  <span className="text-white">{item.message}</span>
+                  <span className="soc-text-muted">{new Intl.DateTimeFormat('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(item.timestamp))}</span>
+                </div>
+              ))}
+            </div>
+          </section>
           <div id="settings" className="hidden" />
         </DashboardLayout>
       </RoleGuard>
